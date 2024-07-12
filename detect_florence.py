@@ -18,7 +18,7 @@ sys.path.append(parent_path)
 
 class Config:
     def __init__(self):
-        self.input_dir = "c:/video/2024-05-10"
+        self.input_dir = "~/"
         self.output_dir = "c:/video/florence"
         self.models_path = "models"
         self.yolo_model = "yolov10s.pt"

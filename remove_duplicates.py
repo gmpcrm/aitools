@@ -11,10 +11,12 @@ class Config:
         source_folder="~/data/frames/",
         target_folder="~/data/nodupes/",
         fastdup_work_dir="/tmp/fastdup_work/",
+        remove=True,
     ):
         self.source_folder = source_folder
         self.target_folder = target_folder
         self.fastdup_work_dir = fastdup_work_dir
+        self.remove = remove
 
 
 class DuplicateRemover:
@@ -97,18 +99,24 @@ def run(
     source_folder="~/data/frames/",
     target_folder="~/data/nodupes/",
     fastdup_work_dir="/tmp/fastdup_work/",
+    remove=True,
 ):
-    config = Config(source_folder, target_folder, fastdup_work_dir)
+    config = Config(source_folder, target_folder, fastdup_work_dir, remove)
     return run_config(config)
 
 
 def run_config(config):
     remover = DuplicateRemover(config)
     remover.run_fastdup()
+    if config.remove:
+        remove_files(remover)
+    return remover
+
+
+def remove_files(remover):
     files_to_remove = remover.get_files_to_remove()
     remover.remove_files(files_to_remove)
     remover.move_remaining_files()
-    return remover
 
 
 def main():
@@ -134,6 +142,12 @@ def main():
         type=str,
         default=config.fastdup_work_dir,
         help="Рабочая папка для хранения артефактов fastdup",
+    )
+
+    parser.add_argument(
+        "--remove",
+        action="store_true",
+        help="Удалять дубликаты",
     )
 
     args = parser.parse_args()
