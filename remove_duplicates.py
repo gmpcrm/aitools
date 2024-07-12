@@ -99,7 +99,7 @@ def run(
     fastdup_work_dir="/tmp/fastdup_work/",
 ):
     config = Config(source_folder, target_folder, fastdup_work_dir)
-    run_config(config)
+    return run_config(config)
 
 
 def run_config(config):
@@ -108,6 +108,7 @@ def run_config(config):
     files_to_remove = remover.get_files_to_remove()
     remover.remove_files(files_to_remove)
     remover.move_remaining_files()
+    return remover
 
 
 def main():

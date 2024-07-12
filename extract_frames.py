@@ -107,12 +107,13 @@ def run(
     subfolders=True,
 ):
     config = Config(input_folder, output_folder, fps, subfolders)
-    run_config(config)
+    return run_config(config)
 
 
 def run_config(config):
     extractor = VideoFrameExtractor(config)
     extractor.extract_frames()
+    return extractor
 
 
 def main():
