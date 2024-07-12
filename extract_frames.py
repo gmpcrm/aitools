@@ -30,6 +30,8 @@ class VideoFrameExtractor:
         self.config = config
         self.input_folder = Path(config.input_folder).expanduser()
         self.output_folder = Path(config.output_folder).expanduser()
+
+        self.output_folder.mkdir(parents=True, exist_ok=True)
         self.frames_file = self.output_folder / "frames.txt"
         self.processed_videos = self._load_processed_videos()
 
@@ -98,7 +100,7 @@ class VideoFrameExtractor:
                 print(f"Обработано: {video_path}")
 
 
-def extract_frames(
+def run(
     input_folder="~/data/video",
     output_folder="~/data/frames",
     fps=-1.0,
