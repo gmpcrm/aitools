@@ -14,8 +14,8 @@ def transliterate_path(path):
 class Config:
     def __init__(
         self,
-        input_folder="~/data/video",
-        output_folder="~/data/frames",
+        input_folder="~/data/video/",
+        output_folder="~/data/frames/",
         fps=-1.0,
         subfolders=True,
     ):
@@ -101,12 +101,16 @@ class VideoFrameExtractor:
 
 
 def run(
-    input_folder="~/data/video",
-    output_folder="~/data/frames",
+    input_folder="~/data/video/",
+    output_folder="~/data/frames/",
     fps=-1.0,
     subfolders=True,
 ):
     config = Config(input_folder, output_folder, fps, subfolders)
+    run_config(config)
+
+
+def run_config(config):
     extractor = VideoFrameExtractor(config)
     extractor.extract_frames()
 
@@ -146,8 +150,7 @@ def main():
     args = parser.parse_args()
     config.__dict__.update(vars(args))
 
-    extractor = VideoFrameExtractor(config)
-    extractor.extract_frames()
+    run_config(config)
 
 
 if __name__ == "__main__":
