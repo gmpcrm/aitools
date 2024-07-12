@@ -1,3 +1,16 @@
+# питон
+sudo apt update
+sudo apt upgrade
+sudo apt install python3.11
+
+sudo apt install python3.11-distutils
+sudo apt install python3-pip
+sudo apt install python3.11-venv
+
 # создание окружения
 python3.11 -m venv venv311
 source venv311/bin/activate
+
+# установка пакетов
+pip install fastdup transliterate
+
