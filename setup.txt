@@ -12,11 +12,16 @@ python3.11 -m venv venv311
 source venv311/bin/activate
 
 # установка пакетов
-pip install fastdup transliterate
+pip install transliterate
+pip install fastdup
 
-#torch 11.7
+#torch 11.8
 pip uninstall torch torchvision torchaudio
-pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+# torch 12.5
+pip uninstall torch torchvision torchaudio
+pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu125
 
 # поддержка florence
 pip install transformers pillow requests matplotlib numpy einops timm

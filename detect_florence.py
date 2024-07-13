@@ -73,8 +73,9 @@ class ObjectDetector:
         self.processed_files = []
 
         self.source_folder = Path(config.source_folder).expanduser()
-        self.target_folder = Path(config.target_folder).expanduser()
         self.models_path = Path(config.models_path).expanduser()
+        self.target_folder = Path(config.target_folder).expanduser()
+        self.target_folder.mkdir(parents=True, exist_ok=True)
 
         yolo_model_path = self.models_path / self.config.yolo_model
         self.yolo_model = YOLOv10(str(yolo_model_path)).to(self.device)
@@ -153,6 +154,19 @@ class ObjectDetector:
     def process_no_yolo(self, rgb_frame):
         pil_image = Image.fromarray(rgb_frame)
         florence_result = self.florence_detect(pil_image)
+
+        caption_query = "<CAPTION>"
+        caption_query = "<DETAILED_CAPTION>"
+        caption_query = None
+        if caption_query:
+            captions = []
+            bboxes = florence_result.get(self.config.query, {}).get("bboxes", [])
+            for bbox in bboxes:
+                florence_image = pil_image.crop(bbox)
+                florence_caption = self.predict(caption_query, florence_image)
+                florence_caption = florence_caption.get(caption_query, "").strip()
+                captions.append(florence_caption)
+            florence_result[self.config.query][caption_query] = captions
 
         width = rgb_frame.shape[1]
         height = rgb_frame.shape[0]
@@ -282,18 +296,15 @@ class ObjectDetector:
         return self.predict(self.config.query, image, self.config.general_prompt)
 
     def predict(self, task_prompt, image, text_input=None):
-        print(1)
         if text_input is None:
             prompt = task_prompt
         else:
             prompt = task_prompt + text_input
 
-        print(2)
         inputs = self.florence_processor(
             text=prompt, images=image, return_tensors="pt"
         ).to(self.device)
 
-        print(3)
         generated_ids = self.florence_model.generate(
             input_ids=inputs["input_ids"],
             pixel_values=inputs["pixel_values"],
@@ -302,19 +313,16 @@ class ObjectDetector:
             do_sample=False,
             num_beams=3,
         )
-        print(4)
 
         generated_text = self.florence_processor.batch_decode(
             generated_ids, skip_special_tokens=False
         )[0]
-        print(5)
 
         parsed_answer = self.florence_processor.post_process_generation(
             generated_text,
             task=task_prompt,
             image_size=(image.width, image.height),
         )
-        print(6)
 
         return parsed_answer
 
