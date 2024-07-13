@@ -33,6 +33,7 @@ class Config:
         subfolder=True,
         save_original=True,
         save_boxes=False,
+        save_yolo=False,
         draw_boxes=False,
         verbose=False,
         scale=1.0,
@@ -61,6 +62,7 @@ class Config:
         self.subfolder = subfolder
         self.save_original = save_original
         self.save_boxes = save_boxes
+        self.save_yolo = save_yolo
         self.draw_boxes = draw_boxes
         self.verbose = verbose
         self.scale = scale
@@ -122,7 +124,7 @@ class ObjectDetector:
         cropped_image = rgb_frame[int(y1) : int(y2), int(x1) : int(x2)]
 
         pil_image = Image.fromarray(cropped_image)
-        images = [pil_image]
+        images = [Image.fromarray(rgb_frame)]
 
         florence_result = self.florence_detect(pil_image)
 
@@ -130,6 +132,47 @@ class ObjectDetector:
             "width": width,
             "height": height,
             "yolo_box": [x1, y1, x2, y2],
+            "yolo_confidence": conf,
+            "florence_results": florence_result,
+        }
+        return result, images
+
+    def process_detection(self, x1, y1, x2, y2, conf, rgb_frame):
+        width = rgb_frame.shape[1]
+        height = rgb_frame.shape[0]
+
+        border_x = int((x2 - x1) * self.config.border)
+        border_y = int((y2 - y1) * self.config.border)
+        x1, y1 = max(0, x1 - border_x), max(0, y1 - border_y)
+        x2, y2 = min(width, x2 + border_x), min(height, y2 + border_y)
+        cropped_image = rgb_frame[int(y1) : int(y2), int(x1) : int(x2)]
+
+        pil_image = Image.fromarray(cropped_image)
+        florence_result = self.florence_detect(pil_image)
+
+        yolo_box = [x1, y1, x2, y2]
+
+        # Корректируем координаты Florence bboxes с учетом yolo_box
+        if self.config.save_yolo:
+            images = [pil_image]
+            for key in florence_result:
+                if "bboxes" in florence_result[key]:
+                    florence_result[key]["bboxes"] = [
+                        [
+                            bbox[0] + yolo_box[0],
+                            bbox[1] + yolo_box[1],
+                            bbox[2] + yolo_box[0],
+                            bbox[3] + yolo_box[1],
+                        ]
+                        for bbox in florence_result[key]["bboxes"]
+                    ]
+        else:
+            images = [Image.fromarray(rgb_frame)]
+
+        result = {
+            "width": width,
+            "height": height,
+            "yolo_box": yolo_box,
             "yolo_confidence": conf,
             "florence_results": florence_result,
         }
@@ -498,6 +541,13 @@ def main():
         action="store_true",
         default=config.save_original,
         help="Сохранять оригинальные изображения",
+    )
+
+    parser.add_argument(
+        "--save_yolo",
+        action="store_true",
+        default=config.save_yolo,
+        help="Сохранять боксы из результатов YOLO",
     )
 
     parser.add_argument(

@@ -174,10 +174,8 @@ extract_frames.py
 ## Использование
 
 ```bash
-python utils\extract_frames.py --input_folder d:/video/sorted --output_folder d:/video/results --fps 0.02 --subfolders True
+python utils\extract_frames.py --source_folder d:/video/sorted --target_folder d:/video/results --fps 0.02 --subfolders True
 ```
-
-1/20/60 = 0.00083333333
 
 ## Результаты
 
@@ -207,8 +205,8 @@ python utils\extract_frames.py --input_folder d:/video/sorted --output_folder d:
 
 ## Параметры
 
-- `--input_folder`: Директория с входными видеофайлами (обязательный)
-- `--output_folder`: Директория для сохранения результатов (обязательный)
+- `--source_folder`: Директория с входными видеофайлами (обязательный)
+- `--target_folder`: Директория для сохранения результатов (обязательный)
 - `--yolo_model`: Путь к весам модели YOLO (по умолчанию: "yolov10s.pt")
 - `--florence_model`: Название или путь к модели Florence (по умолчанию: "microsoft/Florence-2-large")
 - `--yolo_id`: ID класса YOLO для детекции (по умолчанию: 0). Если yolo_id = -1, то детекция YOLO не используется, а для работы с florence передается все изображение.
@@ -224,15 +222,16 @@ python utils\extract_frames.py --input_folder d:/video/sorted --output_folder d:
 - `--subfolder`: Обрабатывать подпапки во входной директории (по умолчанию: True)
 - `--forcemask`: Список файловых масок для принудительной обработки (например 'VID_20240627_110044.' или \*VID_20240627_110044\*)
 - `--save_original`: Сохранять оригинальные изображения (по умолчанию: True)
+- `--save_yolo`: Сохранять боксы из результатов YOLO (по умолчанию: False)
 - `--save_boxes`: Сохранять боксы из результатов Florence (по умолчанию: False)
 - `--draw_boxes`: Рисовать боксы из результатов Florence (по умолчанию: False)
 - `--scale`: Масштабирование изображений перед обработкой (по умолчанию: 1)
-- `--verbose`: Выводить отладочную информацию YOLOv10 (по умолчанию: False)
+- `--verbose`: Выводить отладочную информацию YOLO (по умолчанию: False)
 
 ## Использование
 
 ```bash
-python utils\detect_florence.py --input_dir c:/video/2024-05-10 --output_dir c:/video/florence --general_prompt "locate gloves on people hands" --class_prompts "0=locate gloves" "1=locate people" "2=locate hands" --mode "images" --save_boxes --device cpu
+python utils\detect_florence.py --source_folder c:/video/2024-05-10 --target_folder c:/video/florence --general_prompt "locate gloves on people hands" --class_prompts "0=locate gloves" "1=locate people" "2=locate hands" --mode "images" --save_boxes --device cpu
 ```
 
 Программа обрабатывает все видеофайлы или изображения в указанной директории, применяет детекцию объектов с помощью YOLOv10 и анализирует результаты с использованием Microsoft Florence-2. Результаты сохраняются в отдельных папках для каждого видео или набора изображений, включая JSON-файлы с детальной информацией и изображения обнаруженных объектов.
