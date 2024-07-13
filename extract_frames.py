@@ -14,13 +14,13 @@ def transliterate_path(path):
 class Config:
     def __init__(
         self,
-        input_folder="~/data/video/",
-        output_folder="~/data/frames/",
+        source_folder="~/data/video/",
+        target_folder="~/data/frames/",
         fps=-1.0,
         subfolders=True,
     ):
-        self.input_folder = input_folder
-        self.output_folder = output_folder
+        self.source_folder = source_folder
+        self.target_folder = target_folder
         self.fps = fps
         self.subfolders = subfolders
 
@@ -28,11 +28,11 @@ class Config:
 class VideoFrameExtractor:
     def __init__(self, config):
         self.config = config
-        self.input_folder = Path(config.input_folder).expanduser()
-        self.output_folder = Path(config.output_folder).expanduser()
+        self.source_folder = Path(config.source_folder).expanduser()
+        self.target_folder = Path(config.target_folder).expanduser()
 
-        self.output_folder.mkdir(parents=True, exist_ok=True)
-        self.frames_file = self.output_folder / "frames.txt"
+        self.target_folder.mkdir(parents=True, exist_ok=True)
+        self.frames_file = self.target_folder / "frames.txt"
         self.processed_videos = self._load_processed_videos()
 
     def _load_processed_videos(self):
@@ -51,9 +51,9 @@ class VideoFrameExtractor:
 
     def extract_frames(self):
         video_files = (
-            list(self.input_folder.glob("**/*.mp4"))
+            list(self.source_folder.glob("**/*.mp4"))
             if self.config.subfolders
-            else list(self.input_folder.glob("*.mp4"))
+            else list(self.source_folder.glob("*.mp4"))
         )
 
         with open(self.frames_file, "a", encoding="utf-8") as frames_out:
@@ -62,8 +62,8 @@ class VideoFrameExtractor:
                     print(f"Уже обработан, пропущено: {video_path.name}")
                     continue
 
-                relative_path = video_path.parent.relative_to(self.input_folder)
-                output_subfolder = self.output_folder / relative_path
+                relative_path = video_path.parent.relative_to(self.source_folder)
+                output_subfolder = self.target_folder / relative_path
                 output_subfolder = self._transliterate_path(output_subfolder)
                 output_subfolder.mkdir(parents=True, exist_ok=True)
 
@@ -82,7 +82,13 @@ class VideoFrameExtractor:
                     unit="кадр",
                 ):
                     if frame_interval > 1:
-                        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+                        if frame_interval < 10:
+                            for _ in range(frame_interval - 1):
+                                ret, frame = cap.read()
+                                if not ret:
+                                    break
+                        else:
+                            cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
 
                     ret, frame = cap.read()
                     if not ret:
@@ -100,14 +106,8 @@ class VideoFrameExtractor:
                 print(f"Обработано: {video_path}")
 
 
-def run(
-    input_folder="~/data/video/",
-    output_folder="~/data/frames/",
-    fps=-1.0,
-    subfolders=True,
-):
-    config = Config(input_folder, output_folder, fps, subfolders)
-    return run_config(config)
+def run(**kwargs):
+    return run_config(Config(**kwargs))
 
 
 def run_config(config):
@@ -123,15 +123,15 @@ def main():
     )
 
     parser.add_argument(
-        "--input_folder",
+        "--source_folder",
         type=str,
-        default=config.input_folder,
+        default=config.source_folder,
         help="Исходная папка с видеофайлами",
     )
     parser.add_argument(
-        "--output_folder",
+        "--target_folder",
         type=str,
-        default=config.output_folder,
+        default=config.target_folder,
         help="Папка с результатами для извлеченных кадров",
     )
     parser.add_argument(

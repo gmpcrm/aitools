@@ -6,16 +6,20 @@ from pathlib import Path
 
 
 class Config:
+
     def __init__(
         self,
         source_folder="~/data/frames/",
         target_folder="~/data/nodupes/",
         fastdup_work_dir="/tmp/fastdup_work/",
+        ccthreshold=0.995,
         remove=True,
     ):
-        self.source_folder = source_folder
-        self.target_folder = target_folder
-        self.fastdup_work_dir = fastdup_work_dir
+
+        self.source_folder = Path(source_folder).expanduser()
+        self.target_folder = Path(target_folder).expanduser()
+        self.fastdup_work_dir = Path(fastdup_work_dir).expanduser()
+        self.ccthreshold = ccthreshold
         self.remove = remove
 
 
@@ -27,7 +31,7 @@ class DuplicateRemover:
         )
 
     def run_fastdup(self):
-        self.fd.run(overwrite=True)
+        self.fd.run(cc_threshold=self.config.ccthreshold, overwrite=True)
 
     def get_files_to_remove(self):
         invalid_instances_df = self.fd.invalid_instances()
@@ -54,13 +58,14 @@ class DuplicateRemover:
         print("Количество размытых:", len(list_of_blurry_images))
 
         connected_components_grouped_df = self.fd.connected_components_grouped()
-        list_of_duplicates = []
+        self.duplicates = []
+
         for file_list in connected_components_grouped_df.files:
-            list_of_duplicates.extend(file_list[1:])
-        print("Количество дубликатов:", len(list_of_duplicates))
+            self.duplicates.extend(file_list[1:])
+        print("Количество дубликатов:", len(self.duplicates))
 
         files_to_del = set(
-            list_of_duplicates
+            self.duplicates
             + list_of_broken_images
             + list_of_outliers
             + list_of_dark_images
@@ -75,8 +80,10 @@ class DuplicateRemover:
         count = 0
         for file_name_to_del in files_to_del:
             file_path = os.path.join(self.config.source_folder, file_name_to_del)
+            # print(f"Попытка удалить файл: {file_path}")
             if os.path.exists(file_path):
                 os.remove(file_path)
+                # print(f"Файл удален: {file_path}")
                 count += 1
         print(f"Из необходимых {len(files_to_del)} удалено {count} файлов.")
 
@@ -95,25 +102,19 @@ class DuplicateRemover:
         print(f"Перемещено в {target_folder} {count} файлов.")
 
 
-def run(
-    source_folder="~/data/frames/",
-    target_folder="~/data/nodupes/",
-    fastdup_work_dir="/tmp/fastdup_work/",
-    remove=True,
-):
-    config = Config(source_folder, target_folder, fastdup_work_dir, remove)
-    return run_config(config)
+def run(**kwargs):
+    return run_config(Config(**kwargs))
 
 
 def run_config(config):
     remover = DuplicateRemover(config)
     remover.run_fastdup()
     if config.remove:
-        remove_files(remover)
+        remove(remover)
     return remover
 
 
-def remove_files(remover):
+def remove(remover):
     files_to_remove = remover.get_files_to_remove()
     remover.remove_files(files_to_remove)
     remover.move_remaining_files()
@@ -143,11 +144,16 @@ def main():
         default=config.fastdup_work_dir,
         help="Рабочая папка для хранения артефактов fastdup",
     )
-
     parser.add_argument(
         "--remove",
         action="store_true",
         help="Удалять дубликаты",
+    )
+    parser.add_argument(
+        "--ccthreshold",
+        type=float,
+        default=config.ccthreshold,
+        help="Порог для определения кластеров сходства",
     )
 
     args = parser.parse_args()

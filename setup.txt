@@ -14,3 +14,18 @@ source venv311/bin/activate
 # установка пакетов
 pip install fastdup transliterate
 
+#torch 11.7
+pip uninstall torch torchvision torchaudio
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
+
+# поддержка florence
+pip install transformers pillow requests matplotlib numpy einops timm
+
+# flash attn
+pip install flash_attn
+
+# YOLO
+pip install ultralytics
+
+# YOLOv10
+pip install git+https://github.com/THU-MIG/yolov10.git

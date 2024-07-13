@@ -1,8 +1,6 @@
 import argparse
 import fnmatch
 import json
-import os
-import sys
 from pathlib import Path
 
 import cv2
@@ -12,35 +10,60 @@ from transformers import AutoModelForCausalLM, AutoProcessor
 from ultralytics import YOLOv10
 from tqdm import tqdm
 
-parent_path = str(Path(__file__).resolve().parents[1])
-sys.path.append(parent_path)
-
 
 class Config:
-    def __init__(self):
-        self.input_dir = "~/"
-        self.output_dir = "c:/video/florence"
-        self.models_path = "models"
-        self.yolo_model = "yolov10s.pt"
-        self.florence_model = "microsoft/Florence-2-large"
-        self.yolo_id = 0
-        self.general_prompt = None
-        self.forcemask = []
-        self.class_prompts_default = []
-        self.class_prompts = {}
-        self.device = "cpu"
-        self.fps = 1
-        self.confidence = 0.7
-        self.border = 0.20
-        self.debug = True
-        self.query = "<CAPTION_TO_PHRASE_GROUNDING>"
-        self.mode = "images"
-        self.subfolder = True
-        self.save_original = True
-        self.save_boxes = False
-        self.draw_boxes = False
-        self.verbose = False
-        self.scale = 1.0
+    def __init__(
+        self,
+        source_folder="~/data/video",
+        target_folder="~/data/florence",
+        models_path="~/models",
+        yolo_model="yolov10s.pt",
+        florence_model="microsoft/Florence-2-large",
+        yolo_id=0,
+        general_prompt=None,
+        forcemask=None,
+        class_prompts=None,
+        device="cpu",
+        fps=1,
+        confidence=0.7,
+        border=0.20,
+        debug=True,
+        query="<CAPTION_TO_PHRASE_GROUNDING>",
+        mode="images",
+        subfolder=True,
+        save_original=True,
+        save_boxes=False,
+        draw_boxes=False,
+        verbose=False,
+        scale=1.0,
+    ):
+        if forcemask is None:
+            forcemask = []
+        if class_prompts is None:
+            class_prompts = []
+
+        self.source_folder = source_folder
+        self.target_folder = target_folder
+        self.models_path = models_path
+        self.yolo_model = yolo_model
+        self.florence_model = florence_model
+        self.yolo_id = yolo_id
+        self.general_prompt = general_prompt
+        self.forcemask = forcemask
+        self.class_prompts = class_prompts
+        self.device = device
+        self.fps = fps
+        self.confidence = confidence
+        self.border = border
+        self.debug = debug
+        self.query = query
+        self.mode = mode
+        self.subfolder = subfolder
+        self.save_original = save_original
+        self.save_boxes = save_boxes
+        self.draw_boxes = draw_boxes
+        self.verbose = verbose
+        self.scale = scale
 
 
 class ObjectDetector:
@@ -49,12 +72,12 @@ class ObjectDetector:
         self.device = torch.device(self.get_device(config.device))
         self.processed_files = []
 
-        yolo_model_path = os.path.join(
-            parent_path,
-            config.models_path,
-            config.yolo_model,
-        )
-        self.yolo_model = YOLOv10(yolo_model_path).to(self.device)
+        self.source_folder = Path(config.source_folder).expanduser()
+        self.target_folder = Path(config.target_folder).expanduser()
+        self.models_path = Path(config.models_path).expanduser()
+
+        yolo_model_path = self.models_path / self.config.yolo_model
+        self.yolo_model = YOLOv10(str(yolo_model_path)).to(self.device)
         self.florence_model = AutoModelForCausalLM.from_pretrained(
             config.florence_model,
             trust_remote_code=True,
@@ -66,8 +89,7 @@ class ObjectDetector:
             trust_remote_code=True,
         )
 
-        # Загрузка уже обработанных файлов
-        results_file_path = Path(config.output_dir) / "results.json"
+        results_file_path = self.target_folder / "results.json"
         if results_file_path.exists():
             with open(results_file_path, "r", encoding="utf-8") as f:
                 self.processed_files = json.load(f)
@@ -146,8 +168,8 @@ class ObjectDetector:
         return [result], [pil_image]
 
     def process_video(self, video_path):
-        video_name = Path(video_path).stem
-        output_dir = Path(self.config.output_dir) / video_name
+        video_name = video_path.stem
+        output_dir = self.target_folder / video_name
         output_dir.mkdir(parents=True, exist_ok=True)
 
         cap = cv2.VideoCapture(str(video_path))
@@ -228,7 +250,6 @@ class ObjectDetector:
                 mask in str(image_file) or fnmatch.fnmatch(image_file, mask)
                 for mask in self.config.forcemask
             ):
-
                 print(f"Файл {image_file} принудительно обрабатывается заново")
             elif self.is_file_processed(image_file):
                 print(f"Файл {image_file} уже обработан")
@@ -247,7 +268,7 @@ class ObjectDetector:
                     result,
                     idx,
                     img_idx,
-                    Path(self.config.output_dir),
+                    Path(self.target_folder),
                     is_video=False,
                     base_name=image_file.stem,
                 )
@@ -261,15 +282,18 @@ class ObjectDetector:
         return self.predict(self.config.query, image, self.config.general_prompt)
 
     def predict(self, task_prompt, image, text_input=None):
+        print(1)
         if text_input is None:
             prompt = task_prompt
         else:
             prompt = task_prompt + text_input
 
+        print(2)
         inputs = self.florence_processor(
             text=prompt, images=image, return_tensors="pt"
         ).to(self.device)
 
+        print(3)
         generated_ids = self.florence_model.generate(
             input_ids=inputs["input_ids"],
             pixel_values=inputs["pixel_values"],
@@ -278,16 +302,19 @@ class ObjectDetector:
             do_sample=False,
             num_beams=3,
         )
+        print(4)
 
         generated_text = self.florence_processor.batch_decode(
             generated_ids, skip_special_tokens=False
         )[0]
+        print(5)
 
         parsed_answer = self.florence_processor.post_process_generation(
             generated_text,
             task=task_prompt,
             image_size=(image.width, image.height),
         )
+        print(6)
 
         return parsed_answer
 
@@ -336,45 +363,52 @@ class ObjectDetector:
                     florence_image.save(florence_image_path, "PNG")
 
     def save_processed_files(self):
-        results_file_path = Path(self.config.output_dir) / "results.json"
+        results_file_path = self.target_folder / "results.json"
         with open(results_file_path, "w", encoding="utf-8") as f:
             json.dump(self.processed_files, f, ensure_ascii=False, indent=4)
 
 
-def process_data(config):
-    detector = ObjectDetector(config)
+def run(**kwargs):
+    return run_config(Config(**kwargs))
 
+
+def run_config(config):
+    detector = ObjectDetector(config)
     if config.mode == "video":
-        for video_file in Path(config.input_dir).glob("*.mp4"):
+        for video_file in detector.source_folder.glob("*.mp4"):
             print(f"Обработка видео: {video_file}")
             detector.process_video(video_file)
     else:
-        detector.process_images(config.input_dir)
+        detector.process_images(detector.source_folder)
+    return detector
 
 
 def main():
     config = Config()
-
     parser = argparse.ArgumentParser(
         description="Детектор объектов с использованием YOLOv10 и Microsoft Florence2"
     )
 
     parser.add_argument(
-        "--input_dir",
+        "--source_folder",
         type=str,
-        default=config.input_dir if config.debug else None,
-        required=not config.debug,
+        default=config.source_folder,
         help="Директория с входными файлами",
     )
 
     parser.add_argument(
-        "--output_dir",
+        "--target_folder",
         type=str,
-        default=config.output_dir if config.debug else None,
-        required=not config.debug,
+        default=config.target_folder,
         help="Директория для сохранения результатов",
     )
 
+    parser.add_argument(
+        "--models_path",
+        type=str,
+        default=config.models_path,
+        help="Путь к моделям",
+    )
     parser.add_argument(
         "--yolo_model",
         type=str,
@@ -396,16 +430,14 @@ def main():
     parser.add_argument(
         "--general_prompt",
         type=str,
-        default=config.general_prompt if config.debug else None,
-        required=not config.debug,
+        default=config.general_prompt,
         help="Общий промпт для детекции",
     )
     parser.add_argument(
         "--class_prompts",
         type=str,
         nargs="+",
-        default=config.class_prompts_default if config.debug else None,
-        required=not config.debug,
+        default=config.class_prompts,
         help='Промпты для классов в формате "class_id=prompt"',
     )
     parser.add_argument(
@@ -452,35 +484,34 @@ def main():
         default=config.subfolder,
         help="Обрабатывать подпапки во входной директории",
     )
-    parser.set_defaults(subfolder=config.subfolder)
 
     parser.add_argument(
         "--save_original",
         action="store_true",
+        default=config.save_original,
         help="Сохранять оригинальные изображения",
     )
-    parser.set_defaults(save_boxes=config.save_boxes)
 
     parser.add_argument(
         "--save_boxes",
         action="store_true",
+        default=config.save_boxes,
         help="Сохранять боксы из результатов Florence",
     )
-    parser.set_defaults(save_boxes=config.save_boxes)
 
     parser.add_argument(
         "--draw_boxes",
         action="store_true",
+        default=config.draw_boxes,
         help="Рисовать боксы из результатов Florence",
     )
-    parser.set_defaults(save_boxes=config.save_boxes)
 
     parser.add_argument(
         "--verbose",
         action="store_true",
+        default=config.verbose,
         help="Выводить отладочную информацию YOLOv10",
     )
-    parser.set_defaults(verbose=config.verbose)
 
     parser.add_argument(
         "--scale",
@@ -499,12 +530,7 @@ def main():
     args = parser.parse_args()
     config.__dict__.update(vars(args))
 
-    config.class_prompts = {}
-    for prompt in args.class_prompts:
-        class_id, prompt_text = prompt.split("=")
-        config.class_prompts[prompt_text] = int(class_id)
-
-    process_data(config)
+    run_config(config)
 
 
 if __name__ == "__main__":
