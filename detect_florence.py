@@ -152,9 +152,11 @@ class ObjectDetector:
 
         yolo_box = [x1, y1, x2, y2]
 
-        # Корректируем координаты Florence bboxes с учетом yolo_box
         if self.config.save_yolo:
             images = [pil_image]
+        else:
+            # Корректируем координаты Florence bboxes с учетом yolo_box
+            images = [Image.fromarray(rgb_frame)]
             for key in florence_result:
                 if "bboxes" in florence_result[key]:
                     florence_result[key]["bboxes"] = [
@@ -166,8 +168,6 @@ class ObjectDetector:
                         ]
                         for bbox in florence_result[key]["bboxes"]
                     ]
-        else:
-            images = [Image.fromarray(rgb_frame)]
 
         result = {
             "width": width,
