@@ -5,88 +5,153 @@ from pathlib import Path
 import shutil
 import fnmatch
 from PIL import Image
+from tqdm import tqdm
 
 
 class Config:
-    def __init__(self):
-        self.source_folder = "c:/proplex/labels.florence"
-        self.target_folder = "c:/proplex/labels.new"
-        self.label_filter = ["text label", "inscription"]
-        self.extract = True
+
+    def __init__(
+        self,
+        source_folder="~/data/labels.florence",
+        target_folder="~/data/labels.new",
+        bbox_folder="~/data/labels.bbox",
+        label_filter=["extract inscription text"],
+        extract_bbox=True,
+        save_json=False,
+        query="<CAPTION_TO_PHRASE_GROUNDING>",
+    ):
+        self.source_folder = source_folder
+        self.target_folder = target_folder
+        self.label_filter = label_filter
+        self.extract_bbox = extract_bbox
+        self.save_json = save_json
+        self.bbox_folder = bbox_folder
+        self.query = query
 
 
-def scan_and_copy_files(config):
-    source_folder = Path(config.source_folder)
-    target_folder = Path(config.target_folder)
-    target_folder.mkdir(parents=True, exist_ok=True)
+class LabelFileProcessor:
+    def __init__(self, config):
+        self.config = config
+        self.source_folder = Path(config.source_folder).expanduser()
+        self.target_folder = Path(config.target_folder).expanduser()
+        self.target_folder.mkdir(parents=True, exist_ok=True)
+        if self.config.bbox_folder:
+            self.bbox_folder = Path(config.bbox_folder).expanduser()
+            self.bbox_folder.mkdir(parents=True, exist_ok=True)
 
-    for root, _, files in os.walk(source_folder):
-        for file_name in files:
-            if fnmatch.fnmatch(file_name, "*.json"):
-                if file_name == "results.json":
-                    continue
+    def scan_and_copy_files(self):
+        json_files = []
+        for root, _, files in os.walk(self.source_folder):
+            for file_name in files:
+                if fnmatch.fnmatch(file_name, "*.json") and file_name != "results.json":
+                    json_files.append(Path(root) / file_name)
 
-                json_file_path = Path(root) / file_name
-                with open(json_file_path, "r", encoding="utf-8") as f:
-                    try:
-                        data = json.load(f)
-                        florence_results = data.get("florence_results")
-                        if not florence_results:
-                            print(
-                                f"Нет данных 'florence_results' в файле: {json_file_path}"
+        for json_file_path in tqdm(json_files, desc="Processing JSON files"):
+            with open(json_file_path, "r", encoding="utf-8") as f:
+                try:
+                    data = json.load(f)
+                    florence_results = data.get("florence_results")
+                    if not florence_results:
+                        print(
+                            f"Нет данных 'florence_results' в файле: {json_file_path}"
+                        )
+                        continue
+
+                    result_data = florence_results.get(self.config.query)
+                    if not isinstance(result_data, dict) or "labels" not in result_data:
+                        print(f"Неверный формат JSON в файле: {json_file_path}")
+                        continue
+
+                    labels = result_data["labels"]
+                    bboxes = result_data["bboxes"]
+                    original_file_name = data["file"]
+
+                    if not os.path.exists(original_file_name):
+                        original_file_name = (
+                            self.source_folder
+                            / json_file_path.name.replace(".json", ".png")
+                        )
+                    if not os.path.exists(original_file_name):
+                        print(f"Файл изображения не найден: {original_file_name}")
+                        continue
+
+                    for index, label in enumerate(labels):
+                        if any(f in label for f in self.config.label_filter):
+                            image_file_name = json_file_path.name.replace(
+                                ".json", f".florence.{index:03}.png"
                             )
-                            break
-
-                        first_key = next(iter(florence_results))
-                        result_data = florence_results.get(first_key)
-                        if (
-                            not isinstance(result_data, dict)
-                            or "labels" not in result_data
-                        ):
-                            print(f"Неверный формат JSON в файле: {json_file_path}")
-                            break
-
-                        labels = result_data["labels"]
-                        bboxes = result_data["bboxes"]
-                        original_file_name = data["file"]
-                        for index, label in enumerate(labels):
-                            if any(f in label for f in config.label_filter):
-                                image_file_name = file_name.replace(
-                                    ".json", f".florence.{index:03}.png"
+                            image_file_path = self.source_folder / image_file_name
+                            if image_file_path.exists():
+                                if self.config.extract_bbox and bboxes:
+                                    bbox = bboxes[index]
+                                    bbox_target_folder = (
+                                        self.bbox_folder
+                                        if self.config.bbox_folder
+                                        else self.target_folder
+                                    )
+                                    self.extract_and_save_image(
+                                        original_file_name,
+                                        bbox,
+                                        bbox_target_folder
+                                        / image_file_name.replace(".png", ".bbox.png"),
+                                    )
+                                shutil.copy(
+                                    image_file_path,
+                                    self.target_folder / image_file_name,
                                 )
-                                image_file_path = source_folder / image_file_name
-                                if image_file_path.exists():
-                                    if config.extract and bboxes:
-                                        bbox = bboxes[index]
-                                        extract_and_save_image(
-                                            original_file_name,
-                                            bbox,
-                                            target_folder
-                                            / image_file_name.replace(
-                                                ".png", ".bbox.png"
-                                            ),
-                                        )
-                                    shutil.copy(
-                                        image_file_path,
-                                        target_folder / image_file_name,
+                                if self.config.save_json:
+                                    json_target_path = (
+                                        self.target_folder
+                                        / image_file_name.replace(".png", ".json")
                                     )
-                                    print(f"Скопировано: {image_file_name}")
-                                else:
-                                    print(
-                                        f"Файл изображения не найден: {image_file_path}"
+                                    self.save_filtered_json(
+                                        data, json_target_path, index
                                     )
-                    except json.JSONDecodeError:
-                        print(f"Ошибка чтения JSON файла: {json_file_path}")
+                                # print(f"Скопировано: {image_file_name}")
+                            else:
+                                print(f"Файл изображения не найден: {image_file_path}")
+                except json.JSONDecodeError:
+                    print(f"Ошибка чтения JSON файла: {json_file_path}")
+
+    def extract_and_save_image(self, image_path, bbox, target_path):
+        with Image.open(image_path) as img:
+            left, top, right, bottom = bbox
+            cropped_img = img.crop((left, top, right, bottom))
+            cropped_img.save(target_path)
+
+    def save_filtered_json(self, data, json_target_path, index):
+        filtered_data = {
+            "width": data.get("width"),
+            "height": data.get("height"),
+            "yolo_box": data.get("yolo_box"),
+            "yolo_confidence": data.get("yolo_confidence"),
+            "florence_results": {
+                self.config.query: {
+                    "bboxes": [
+                        data["florence_results"][self.config.query]["bboxes"][index]
+                    ],
+                    "labels": [
+                        data["florence_results"][self.config.query]["labels"][index]
+                    ],
+                }
+            },
+            "file": data["file"],
+        }
+        with open(json_target_path, "w", encoding="utf-8") as json_out:
+            json.dump(filtered_data, json_out, ensure_ascii=False, indent=4)
 
 
-def extract_and_save_image(image_path, bbox, target_path):
-    with Image.open(image_path) as img:
-        left, top, right, bottom = bbox
-        cropped_img = img.crop((left, top, right, bottom))
-        cropped_img.save(target_path)
+def run(**kwargs):
+    return run_config(Config(**kwargs))
 
 
-if __name__ == "__main__":
+def run_config(config):
+    processor = LabelFileProcessor(config)
+    processor.scan_and_copy_files()
+    return processor
+
+
+def main():
     config = Config()
     parser = argparse.ArgumentParser(
         description="Утилита для копирования файлов на основе JSON меток"
@@ -111,13 +176,34 @@ if __name__ == "__main__":
         help="Список фильтров для меток",
     )
     parser.add_argument(
-        "--extract",
+        "--extract_bbox",
         action="store_true",
-        default=config.extract,
+        default=config.extract_bbox,
         help="Вырезать изображения по bounding box",
+    )
+    parser.add_argument(
+        "--bbox_folder",
+        default=config.bbox_folder,
+        help="Путь к папке для сохранения вырезанных изображений",
+    )
+    parser.add_argument(
+        "--save_json",
+        action="store_true",
+        default=config.save_json,
+        help="Сохранять JSON данные для каждой картинки",
+    )
+    parser.add_argument(
+        "--query",
+        type=str,
+        default=config.query,
+        help="Ключ для получения данных из florence",
     )
 
     args = parser.parse_args()
     config.__dict__.update(vars(args))
 
-    scan_and_copy_files(config)
+    run_config(config)
+
+
+if __name__ == "__main__":
+    main()
