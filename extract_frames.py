@@ -49,11 +49,13 @@ class VideoFrameExtractor:
         transliterated_parts = [translit(part, "ru", reversed=True) for part in parts]
         return Path(*transliterated_parts)
 
+    def get_files(self, source, ext):
+        pattern = f"**/*.{ext}" if self.config.subfolders else f"*.{ext}"
+        return list(source.glob(pattern))
+
     def extract_frames(self):
-        video_files = (
-            list(self.source_folder.glob("**/*.mp4"))
-            if self.config.subfolders
-            else list(self.source_folder.glob("*.mp4"))
+        video_files = self.get_files(self.source_folder, "mp4") + self.get_files(
+            self.source_folder, "mov"
         )
 
         with open(self.frames_file, "a", encoding="utf-8") as frames_out:

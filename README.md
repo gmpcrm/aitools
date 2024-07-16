@@ -216,7 +216,7 @@ python utils\extract_frames.py --source_folder d:/video/sorted --target_folder d
 - `--fps`: Кадров в секунду для детекции (по умолчанию: 0.1)
 - `--confidence`: Минимальная уверенность для детекций YOLO (по умолчанию: 0.7)
 - `--border`: Процент увеличения размера ограничивающей рамки (по умолчанию: 0.20)
-- `--query`: Запрос к модели Microsoft Florence (по умолчанию: "<CAPTION_TO_PHRASE_GROUNDING>"). Возможны также "<CAPTION>", "<DETAILED_CAPTION>", "<MORE_DETAILED_CAPTION>".
+- `--query`: Запрос к модели Microsoft Florence (по умолчанию: "<CAPTION_TO_PHRASE_GROUNDING>"). Возможны также "<CAPTION>", "<DETAILED_CAPTION>", "<MORE_DETAILED_CAPTION>". Если запрос не указан, модель Florence не используется.
 
 - `--mode`: Режим обработки: video или images (по умолчанию: "images")
 - `--subfolder`: Обрабатывать подпапки во входной директории (по умолчанию: True)

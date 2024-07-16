@@ -37,6 +37,9 @@ class Config:
         draw_boxes=False,
         verbose=False,
         scale=1.0,
+        draw_yolo_boxes=False,
+        yolo_slice=1,
+        yolo_slice_overlap=0.0,
     ):
         if forcemask is None:
             forcemask = []
@@ -66,9 +69,12 @@ class Config:
         self.draw_boxes = draw_boxes
         self.verbose = verbose
         self.scale = scale
+        self.draw_yolo_boxes = draw_yolo_boxes
+        self.yolo_slice = yolo_slice
+        self.yolo_slice_overlap = yolo_slice_overlap
 
 
-class ObjectDetector:
+class FlorenceDetector:
     def __init__(self, config):
         self.config = config
         self.device = torch.device(self.get_device(config.device))
@@ -80,17 +86,20 @@ class ObjectDetector:
         self.target_folder.mkdir(parents=True, exist_ok=True)
 
         yolo_model_path = self.models_path / self.config.yolo_model
-        self.yolo_model = YOLOv10(str(yolo_model_path)).to(self.device)
-        self.florence_model = AutoModelForCausalLM.from_pretrained(
-            config.florence_model,
-            trust_remote_code=True,
-            use_flash_attention_2=False,
-        ).to(self.device)
+        if self.config.yolo_id != -1:
+            self.yolo_model = YOLOv10(str(yolo_model_path)).to(self.device)
 
-        self.florence_processor = AutoProcessor.from_pretrained(
-            config.florence_model,
-            trust_remote_code=True,
-        )
+        if self.config.query:
+            self.florence_model = AutoModelForCausalLM.from_pretrained(
+                config.florence_model,
+                trust_remote_code=True,
+                use_flash_attention_2=False,
+            ).to(self.device)
+
+            self.florence_processor = AutoProcessor.from_pretrained(
+                config.florence_model,
+                trust_remote_code=True,
+            )
 
         results_file_path = self.target_folder / "results.json"
         if results_file_path.exists():
@@ -108,8 +117,9 @@ class ObjectDetector:
         for box in yolo_results.boxes.data.tolist():
             x1, y1, x2, y2, conf, class_id = box
             if int(class_id) == self.config.yolo_id and conf > self.config.confidence:
-                result, images = self.process_detection(x1, y1, x2, y2, conf, rgb_frame)
+                result, image = self.process_detection(x1, y1, x2, y2, conf, rgb_frame)
                 results.append(result)
+                images.extend(image)
 
         return results, images
 
@@ -117,66 +127,112 @@ class ObjectDetector:
         width = rgb_frame.shape[1]
         height = rgb_frame.shape[0]
 
-        border_x = int((x2 - x1) * self.config.border)
-        border_y = int((y2 - y1) * self.config.border)
+        box_width = int(x2 - x1)
+        box_height = int(y2 - y1)
+
+        border_x = int(box_width * self.config.border)
+        border_y = int(box_height * self.config.border)
         x1, y1 = max(0, x1 - border_x), max(0, y1 - border_y)
         x2, y2 = min(width, x2 + border_x), min(height, y2 + border_y)
         cropped_image = rgb_frame[int(y1) : int(y2), int(x1) : int(x2)]
 
-        pil_image = Image.fromarray(cropped_image)
-        images = [Image.fromarray(rgb_frame)]
+        sliced_yolo_boxes = []
+        if self.config.yolo_slice != 0:
+            if self.config.yolo_slice == -1:
+                overlap = self.config.yolo_slice_overlap / 100.0
+                if box_width >= box_height:
+                    slice_size = box_height
+                    num_slices = int((box_width / (slice_size * (1 - overlap))) + 1)
+                else:
+                    slice_size = box_width
+                    num_slices = int((box_height / (slice_size * (1 - overlap))) + 1)
 
-        florence_result = self.florence_detect(pil_image)
+                print(slice_size, num_slices)
+            else:
+                num_slices = self.config.yolo_slice
+                slice_size = min(box_width, box_height)
 
-        result = {
-            "width": width,
-            "height": height,
-            "yolo_box": [x1, y1, x2, y2],
-            "yolo_confidence": conf,
-            "florence_results": florence_result,
-        }
-        return result, images
+            sliced_images = []
+            if box_width >= box_height:  # нарезка по ширине
+                offset = (
+                    (box_width - slice_size * num_slices) // (num_slices - 1)
+                    if num_slices > 1
+                    else 0
+                )
+                for i in range(num_slices):
+                    slice_x1 = x1 + i * (slice_size + offset)
+                    slice_x2 = slice_x1 + slice_size
+                    if slice_x2 > x2:
+                        slice_x2 = x2
+                        slice_x1 = slice_x2 - slice_size
+                    slice_y1 = y1
+                    slice_y2 = y2
+                    sliced_cropped_image = rgb_frame[
+                        int(slice_y1) : int(slice_y2), int(slice_x1) : int(slice_x2)
+                    ]
+                    sliced_pil_image = Image.fromarray(sliced_cropped_image)
+                    sliced_images.append(sliced_pil_image)
+                    sliced_yolo_boxes.append([slice_x1, slice_y1, slice_x2, slice_y2])
+            else:  # нарезка по высоте
+                offset = (
+                    (box_height - slice_size * num_slices) // (num_slices - 1)
+                    if num_slices > 1
+                    else 0
+                )
+                for j in range(num_slices):
+                    slice_y1 = y1 + j * (slice_size + offset)
+                    slice_y2 = slice_y1 + slice_size
+                    if slice_y2 > y2:
+                        slice_y2 = y2
+                        slice_y1 = slice_y2 - slice_size
+                    slice_x1 = x1
+                    slice_x2 = x2
+                    sliced_cropped_image = rgb_frame[
+                        int(slice_y1) : int(slice_y2), int(slice_x1) : int(slice_x2)
+                    ]
+                    sliced_pil_image = Image.fromarray(sliced_cropped_image)
+                    sliced_images.append(sliced_pil_image)
+                    sliced_yolo_boxes.append([slice_x1, slice_y1, slice_x2, slice_y2])
+            images = sliced_images
+        else:
+            pil_image = Image.fromarray(cropped_image)
+            images = [pil_image]
 
-    def process_detection(self, x1, y1, x2, y2, conf, rgb_frame):
-        width = rgb_frame.shape[1]
-        height = rgb_frame.shape[0]
-
-        border_x = int((x2 - x1) * self.config.border)
-        border_y = int((y2 - y1) * self.config.border)
-        x1, y1 = max(0, x1 - border_x), max(0, y1 - border_y)
-        x2, y2 = min(width, x2 + border_x), min(height, y2 + border_y)
-        cropped_image = rgb_frame[int(y1) : int(y2), int(x1) : int(x2)]
-
-        pil_image = Image.fromarray(cropped_image)
-        florence_result = self.florence_detect(pil_image)
+        if self.config.query:
+            florence_results = []
+            for image in images:
+                florence_result = self.florence_detect(image)
+                florence_results.append(florence_result)
+        else:
+            florence_results = []
 
         yolo_box = [x1, y1, x2, y2]
 
-        if self.config.save_yolo:
-            images = [pil_image]
-        else:
-            # Корректируем координаты Florence bboxes с учетом yolo_box
-            images = [Image.fromarray(rgb_frame)]
-            for key in florence_result:
-                if "bboxes" in florence_result[key]:
-                    florence_result[key]["bboxes"] = [
-                        [
-                            bbox[0] + yolo_box[0],
-                            bbox[1] + yolo_box[1],
-                            bbox[2] + yolo_box[0],
-                            bbox[3] + yolo_box[1],
-                        ]
-                        for bbox in florence_result[key]["bboxes"]
-                    ]
+        if self.config.save_yolo or self.config.draw_yolo_boxes:
+            if not self.config.save_boxes:
+                pil_image = Image.fromarray(rgb_frame)
+            if self.config.yolo_slice != 0 and self.config.draw_yolo_boxes:
+                for sliced_box in sliced_yolo_boxes:
+                    pil_image = self.draw_boxes_on_image(
+                        pil_image, sliced_box, f"YOLO Slice"
+                    )
+            else:
+                pil_image = self.draw_boxes_on_image(
+                    pil_image, yolo_box, f"YOLO: {conf:.2f}"
+                )
 
         result = {
             "width": width,
             "height": height,
             "yolo_box": yolo_box,
             "yolo_confidence": conf,
-            "florence_results": florence_result,
+            "sliced_yolo_boxes": sliced_yolo_boxes,
         }
-        return result, images
+
+        if florence_results:
+            result["florence_results"] = florence_results
+
+        return result, [pil_image]
 
     def resize_image(self, image):
         if self.config.scale != 1:
@@ -196,7 +252,10 @@ class ObjectDetector:
 
     def process_no_yolo(self, rgb_frame):
         pil_image = Image.fromarray(rgb_frame)
-        florence_result = self.florence_detect(pil_image)
+        if self.config.query:
+            florence_result = self.florence_detect(pil_image)
+        else:
+            florence_result = {}
 
         caption_query = "<CAPTION>"
         caption_query = "<DETAILED_CAPTION>"
@@ -393,25 +452,26 @@ class ObjectDetector:
         with open(json_path, "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=4)
 
-        florence_results = result["florence_results"].get(self.config.query, [])
-        if (
-            self.config.draw_boxes or self.config.save_boxes
-        ) and "bboxes" in florence_results:
-            fboxes = florence_results.get("bboxes")
-            flabels = florence_results.get("labels")
-            if fboxes and flabels:
-                for bbox_index, (label, bbox) in enumerate(zip(flabels, fboxes)):
-                    florence_image = pil_image.crop(bbox)
-                    if self.config.draw_boxes:
-                        florence_image = self.draw_boxes_on_image(
-                            pil_image, bbox, label
+        if self.config.query:
+            florence_results = result["florence_results"].get(self.config.query, [])
+            if (
+                self.config.draw_boxes or self.config.save_boxes
+            ) and "bboxes" in florence_results:
+                fboxes = florence_results.get("bboxes")
+                flabels = florence_results.get("labels")
+                if fboxes and flabels:
+                    for bbox_index, (label, bbox) in enumerate(zip(flabels, fboxes)):
+                        florence_image = pil_image.crop(bbox)
+                        if self.config.draw_boxes:
+                            florence_image = self.draw_boxes_on_image(
+                                pil_image, bbox, label
+                            )
+
+                        florence_image_path = image_path.with_name(
+                            f"{image_path.stem}.florence.{bbox_index:03d}.png"
                         )
 
-                    florence_image_path = image_path.with_name(
-                        f"{image_path.stem}.florence.{bbox_index:03d}.png"
-                    )
-
-                    florence_image.save(florence_image_path, "PNG")
+                        florence_image.save(florence_image_path, "PNG")
 
     def save_processed_files(self):
         results_file_path = self.target_folder / "results.json"
@@ -424,7 +484,7 @@ def run(**kwargs):
 
 
 def run_config(config):
-    detector = ObjectDetector(config)
+    detector = FlorenceDetector(config)
     if config.mode == "video":
         for video_file in detector.source_folder.glob("*.mp4"):
             print(f"Обработка видео: {video_file}")
@@ -568,7 +628,7 @@ def main():
         "--verbose",
         action="store_true",
         default=config.verbose,
-        help="Выводить отладочную информацию YOLOv10",
+        help="Выводить отладочную информацию YOLO",
     )
 
     parser.add_argument(
@@ -583,6 +643,27 @@ def main():
         nargs="+",
         default=config.forcemask,
         help="Список файловых масок для принудительной обработки",
+    )
+
+    parser.add_argument(
+        "--draw_yolo_boxes",
+        action="store_true",
+        default=config.draw_yolo_boxes,
+        help="Рисовать боксы из результатов YOLO",
+    )
+
+    parser.add_argument(
+        "--yolo_slice",
+        type=int,
+        default=config.yolo_slice,
+        help="Количество квадратных кусков для нарезки результатов YOLO",
+    )
+
+    parser.add_argument(
+        "--yolo_slice_overlap",
+        type=float,
+        default=config.yolo_slice_overlap,
+        help="Процент перекрытия для нарезки YOLO",
     )
 
     args = parser.parse_args()

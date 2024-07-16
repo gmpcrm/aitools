@@ -40,6 +40,14 @@ class YOLODatasetCreator:
         height = height * dh
         return (x_center, y_center, width, height)
 
+    def save_yolo_bbox(self, label_file, data, bbox):
+        yolo_bbox = self.convert_bbox_to_yolo((data["width"], data["height"]), bbox)
+
+        with open(label_file, "a", encoding="utf-8") as label_file:
+            label_file.write(
+                f"{self.config.class_id} {yolo_bbox[0]} {yolo_bbox[1]} {yolo_bbox[2]} {yolo_bbox[3]}\n"
+            )
+
     def create_dataset(self):
         dataset_folder = Path(self.config.dataset_folder).expanduser()
         train_images_folder = dataset_folder / "train" / "images"
@@ -52,7 +60,8 @@ class YOLODatasetCreator:
         valid_images_folder.mkdir(parents=True, exist_ok=True)
         valid_labels_folder.mkdir(parents=True, exist_ok=True)
 
-        file_pattern = re.compile(r"^(.*)\.florence\.(\d+)\.png$")
+        florence_pattern = re.compile(r"^(.*)\.florence\.(\d+)\.png$")
+        yolo_pattern = re.compile(r"^(.*)\.(\d+)\.png$")
         counter = 0
         valid_interval = 100 // self.config.valid
 
@@ -63,13 +72,23 @@ class YOLODatasetCreator:
         ]
 
         for file_name in tqdm(files, desc="Processing files"):
-            match = file_pattern.match(file_name)
+            match = florence_pattern.match(file_name)
+            if match:
+                original_name = match.group(1)
+                index_str = match.group(2)
+                index = int(index_str)
+            else:
+                match = yolo_pattern.match(file_name)
+                if match:
+                    original_name = match.group(1)
+                    index_str = match.group(2)
+                    index = int(index_str)
+                    original_name = f"{original_name}.{index_str}"
+                    index_str = ""
+                    index = 0
+
             if not match:
                 continue
-
-            original_name = match.group(1)
-            index_str = match.group(2)
-            index = int(index_str)
 
             json_file_name = f"{original_name}.json"
             json_file_path = (
@@ -83,29 +102,35 @@ class YOLODatasetCreator:
                 with open(json_file_path, "r", encoding="utf-8") as json_file:
                     data = json.load(json_file)
 
+                if "file" in data and os.path.exists(data["file"]):
+                    original_img_path = data["file"]
+
                 img = Image.open(original_img_path)
                 output_img_path = train_images_folder / f"{original_name}.jpg"
-                label_file_path = train_labels_folder / f"{original_name}.txt"
+                label_file = train_labels_folder / f"{original_name}.txt"
 
                 if counter % valid_interval == 0:
                     output_img_path = valid_images_folder / f"{original_name}.jpg"
-                    label_file_path = valid_labels_folder / f"{original_name}.txt"
+                    label_file = valid_labels_folder / f"{original_name}.txt"
 
                 img.save(output_img_path, "JPEG")
-
-                florence_results = next(iter(data["florence_results"].values()), None)
-                if florence_results:
-                    bboxes = florence_results["bboxes"]
+                bboxes = []
+                if "florence_results" in data:
+                    florence_results = next(
+                        iter(data["florence_results"].values()), None
+                    )
+                    if florence_results:
+                        bboxes = florence_results["bboxes"]
+                        if index < len(bboxes):
+                            self.save_yolo_bbox(label_file, data, bboxes[index])
+                elif "bboxes" in data:
+                    bboxes = data["bboxes"]
                     if index < len(bboxes):
-                        bbox = bboxes[index]
-                        yolo_bbox = self.convert_bbox_to_yolo(
-                            (data["width"], data["height"]), bbox
-                        )
-
-                        with open(label_file_path, "a", encoding="utf-8") as label_file:
-                            label_file.write(
-                                f"{self.config.class_id} {yolo_bbox[0]} {yolo_bbox[1]} {yolo_bbox[2]} {yolo_bbox[3]}\n"
-                            )
+                        self.save_yolo_bbox(label_file, data, bboxes[index])
+                elif "sliced_yolo_boxes" in data:
+                    bboxes = data["sliced_yolo_boxes"]
+                    for bbox in bboxes:
+                        self.save_yolo_bbox(label_file, data, bbox)
 
                 counter += 1
 
