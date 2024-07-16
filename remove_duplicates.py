@@ -80,10 +80,8 @@ class DuplicateRemover:
         count = 0
         for file_name_to_del in files_to_del:
             file_path = os.path.join(self.config.source_folder, file_name_to_del)
-            # print(f"Попытка удалить файл: {file_path}")
             if os.path.exists(file_path):
                 os.remove(file_path)
-                # print(f"Файл удален: {file_path}")
                 count += 1
         print(f"Из необходимых {len(files_to_del)} удалено {count} файлов.")
 
