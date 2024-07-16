@@ -165,11 +165,6 @@ class FlorenceDetector:
                         slice_x1 = slice_x2 - slice_size
                     slice_y1 = y1
                     slice_y2 = y2
-                    sliced_cropped_image = rgb_frame[
-                        int(slice_y1) : int(slice_y2), int(slice_x1) : int(slice_x2)
-                    ]
-                    sliced_pil_image = Image.fromarray(sliced_cropped_image)
-                    sliced_images.append(sliced_pil_image)
                     sliced_yolo_boxes.append([slice_x1, slice_y1, slice_x2, slice_y2])
             else:  # нарезка по высоте
                 offset = (
@@ -185,13 +180,9 @@ class FlorenceDetector:
                         slice_y1 = slice_y2 - slice_size
                     slice_x1 = x1
                     slice_x2 = x2
-                    sliced_cropped_image = rgb_frame[
-                        int(slice_y1) : int(slice_y2), int(slice_x1) : int(slice_x2)
-                    ]
-                    sliced_pil_image = Image.fromarray(sliced_cropped_image)
-                    sliced_images.append(sliced_pil_image)
                     sliced_yolo_boxes.append([slice_x1, slice_y1, slice_x2, slice_y2])
-            images = sliced_images
+            pil_image = Image.fromarray(rgb_frame)
+            images = [pil_image]
         else:
             pil_image = Image.fromarray(cropped_image)
             images = [pil_image]
@@ -212,7 +203,7 @@ class FlorenceDetector:
             if self.config.yolo_slice != 0 and self.config.draw_yolo_boxes:
                 for sliced_box in sliced_yolo_boxes:
                     pil_image = self.draw_boxes_on_image(
-                        pil_image, sliced_box, f"YOLO Slice"
+                        pil_image, sliced_box, f"YOLO Slice", copy=False
                     )
             else:
                 pil_image = self.draw_boxes_on_image(
