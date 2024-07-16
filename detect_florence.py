@@ -146,8 +146,6 @@ class FlorenceDetector:
                 else:
                     slice_size = box_width
                     num_slices = int((box_height / (slice_size * (1 - overlap))) + 1)
-
-                print(slice_size, num_slices)
             else:
                 num_slices = self.config.yolo_slice
                 slice_size = min(box_width, box_height)
