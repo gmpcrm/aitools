@@ -18,11 +18,13 @@ class Config:
         target_folder="~/data/frames/",
         fps=-1.0,
         subfolders=True,
+        ext="png",
     ):
         self.source_folder = source_folder
         self.target_folder = target_folder
-        self.fps = fps
         self.subfolders = subfolders
+        self.ext = ext
+        self.fps = fps
 
 
 class VideoFrameExtractor:
@@ -97,7 +99,9 @@ class VideoFrameExtractor:
                         break
 
                     frame_count += 1
-                    output_filename = f"{video_path.stem}.{frame_count:03d}.png"
+                    output_filename = (
+                        f"{video_path.stem}.{frame_count:03d}.{self.config.ext}"
+                    )
                     output_path = output_subfolder / output_filename
 
                     cv2.imwrite(str(output_path), frame)

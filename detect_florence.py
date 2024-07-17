@@ -38,7 +38,7 @@ class Config:
         verbose=False,
         scale=1.0,
         draw_yolo_boxes=False,
-        yolo_slice=1,
+        yolo_slice=0,
         yolo_slice_overlap=0.0,
     ):
         if forcemask is None:
@@ -150,7 +150,6 @@ class FlorenceDetector:
                 num_slices = self.config.yolo_slice
                 slice_size = min(box_width, box_height)
 
-            sliced_images = []
             if box_width >= box_height:  # нарезка по ширине
                 offset = (
                     (box_width - slice_size * num_slices) // (num_slices - 1)
@@ -215,8 +214,10 @@ class FlorenceDetector:
             "height": height,
             "yolo_box": yolo_box,
             "yolo_confidence": conf,
-            "sliced_yolo_boxes": sliced_yolo_boxes,
         }
+
+        if sliced_yolo_boxes:
+            result["sliced_yolo_boxes"] = sliced_yolo_boxes
 
         if florence_results:
             result["florence_results"] = florence_results
@@ -442,7 +443,7 @@ class FlorenceDetector:
             json.dump(result, f, ensure_ascii=False, indent=4)
 
         if self.config.query:
-            florence_results = result["florence_results"].get(self.config.query, [])
+            florence_results = result["florence_results"][0].get(self.config.query, [])
             if (
                 self.config.draw_boxes or self.config.save_boxes
             ) and "bboxes" in florence_results:
