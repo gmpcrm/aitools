@@ -199,15 +199,16 @@ class FlorenceDetector:
         if self.config.save_yolo or self.config.draw_yolo_boxes:
             if not self.config.save_boxes:
                 pil_image = Image.fromarray(rgb_frame)
-            if self.config.yolo_slice != 0 and self.config.draw_yolo_boxes:
-                for sliced_box in sliced_yolo_boxes:
+            if self.config.draw_yolo_boxes:
+                if self.config.yolo_slice != 0:
+                    for sliced_box in sliced_yolo_boxes:
+                        pil_image = self.draw_boxes_on_image(
+                            pil_image, sliced_box, f"YOLO Slice", copy=False
+                        )
+                else:
                     pil_image = self.draw_boxes_on_image(
-                        pil_image, sliced_box, f"YOLO Slice", copy=False
+                        pil_image, yolo_box, f"YOLO: {conf:.2f}"
                     )
-            else:
-                pil_image = self.draw_boxes_on_image(
-                    pil_image, yolo_box, f"YOLO: {conf:.2f}"
-                )
 
         result = {
             "width": width,

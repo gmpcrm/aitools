@@ -39,7 +39,7 @@ if True:
         save_original=True,
         save_boxes=True,
         save_yolo=True,
-        # draw_boxes=True,
+        draw_boxes=True,
         device="cpu",
         mode="images",
         query=query,
