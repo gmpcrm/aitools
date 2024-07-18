@@ -34,3 +34,10 @@ pip install ultralytics
 
 # YOLOv10
 pip install git+https://github.com/THU-MIG/yolov10.git
+
+#doctr
+pip3 install python-doctr[torch]@git+https://github.com/mindee/doctr.git
+git clone https://github.com/mindee/doctr.git
+git submodule add https://github.com/mindee/doctr.git doctr
+cd doctr
+pip install -e .[torch]

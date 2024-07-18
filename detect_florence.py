@@ -85,8 +85,8 @@ class FlorenceDetector:
         self.target_folder = Path(config.target_folder).expanduser()
         self.target_folder.mkdir(parents=True, exist_ok=True)
 
-        yolo_model_path = self.models_path / self.config.yolo_model
         if self.config.yolo_id != -1:
+            yolo_model_path = self.models_path / self.config.yolo_model
             self.yolo_model = YOLOv10(str(yolo_model_path)).to(self.device)
 
         if self.config.query:
@@ -269,7 +269,7 @@ class FlorenceDetector:
             "height": height,
             "yolo_box": [0, 0, width, height],
             "yolo_confidence": 0,
-            "florence_results": florence_result,
+            "florence_results": [florence_result],
         }
 
         return [result], [pil_image]
@@ -340,6 +340,21 @@ class FlorenceDetector:
     def is_file_processed(self, file_path):
         return any(entry["file"] == str(file_path) for entry in self.processed_files)
 
+    def filter_image_files(self, image_files):
+        filtered_files = []
+        for image_file in image_files:
+            if any(
+                mask in str(image_file) or fnmatch.fnmatch(image_file, mask)
+                for mask in self.config.forcemask
+            ):
+                print(f"Файл {image_file} принудительно обрабатывается заново")
+                filtered_files.append(image_file)
+            elif not self.is_file_processed(image_file):
+                filtered_files.append(image_file)
+            else:
+                print(f"Файл {image_file} уже обработан")
+        return filtered_files
+
     def process_images(self, input_folder):
         results = []
         glob_pattern = "**/*" if self.config.subfolder else "*"
@@ -349,19 +364,12 @@ class FlorenceDetector:
             if f.suffix.lower() in (".jpg", ".jpeg", ".png")
         ]
 
-        total_images = len(image_files)
-        for idx, image_file in enumerate(
-            tqdm(image_files, desc="Processing Images"), 1
-        ):
-            if any(
-                mask in str(image_file) or fnmatch.fnmatch(image_file, mask)
-                for mask in self.config.forcemask
-            ):
-                print(f"Файл {image_file} принудительно обрабатывается заново")
-            elif self.is_file_processed(image_file):
-                print(f"Файл {image_file} уже обработан")
-                continue
+        filtered_files = self.filter_image_files(image_files)
 
+        total_images = len(filtered_files)
+        for idx, image_file in enumerate(
+            tqdm(filtered_files, desc="Processing Images"), 1
+        ):
             image = cv2.imread(str(image_file))
             if image is None:
                 print(f"Не удалось прочитать изображение: {image_file}")

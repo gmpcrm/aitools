@@ -9,13 +9,13 @@ from tqdm import tqdm
 
 
 class Config:
-
     def __init__(
         self,
         source_folder="~/data/labels.florence",
         target_folder="~/data/labels.new",
         bbox_folder="~/data/labels.bbox",
         label_filter=["extract inscription text"],
+        filter_match="substr",
         extract_bbox=True,
         save_json=False,
         query="<CAPTION_TO_PHRASE_GROUNDING>",
@@ -27,6 +27,7 @@ class Config:
         self.save_json = save_json
         self.bbox_folder = bbox_folder
         self.query = query
+        self.filter_match = filter_match
 
 
 class LabelFileProcessor:
@@ -57,13 +58,14 @@ class LabelFileProcessor:
                         )
                         continue
 
-                    result_data = florence_results.get(self.config.query)
+                    result_data = florence_results[0].get(self.config.query)
                     if not isinstance(result_data, dict) or "labels" not in result_data:
                         print(f"Неверный формат JSON в файле: {json_file_path}")
                         continue
 
                     labels = result_data["labels"]
                     bboxes = result_data["bboxes"]
+                    yolo_box = data["yolo_box"]
                     original_file_name = data["file"]
 
                     if not os.path.exists(original_file_name):
@@ -76,7 +78,14 @@ class LabelFileProcessor:
                         continue
 
                     for index, label in enumerate(labels):
-                        if any(f in label for f in self.config.label_filter):
+                        if any(
+                            (
+                                f in label
+                                if self.config.filter_match == "substr"
+                                else f == label
+                            )
+                            for f in self.config.label_filter
+                        ):
                             image_file_name = json_file_path.name.replace(
                                 ".json", f".florence.{index:03}.png"
                             )
@@ -89,6 +98,10 @@ class LabelFileProcessor:
                                         if self.config.bbox_folder
                                         else self.target_folder
                                     )
+                                    bbox[0] += yolo_box[0]
+                                    bbox[1] += yolo_box[1]
+                                    bbox[2] += yolo_box[0]
+                                    bbox[3] += yolo_box[1]
                                     self.extract_and_save_image(
                                         original_file_name,
                                         bbox,
@@ -120,6 +133,7 @@ class LabelFileProcessor:
             cropped_img.save(target_path)
 
     def save_filtered_json(self, data, json_target_path, index):
+        query_data = data["florence_results"][0][self.config.query]
         filtered_data = {
             "width": data.get("width"),
             "height": data.get("height"),
@@ -127,12 +141,8 @@ class LabelFileProcessor:
             "yolo_confidence": data.get("yolo_confidence"),
             "florence_results": {
                 self.config.query: {
-                    "bboxes": [
-                        data["florence_results"][self.config.query]["bboxes"][index]
-                    ],
-                    "labels": [
-                        data["florence_results"][self.config.query]["labels"][index]
-                    ],
+                    "bboxes": [query_data["bboxes"][index]],
+                    "labels": [query_data["labels"][index]],
                 }
             },
             "file": data["file"],
