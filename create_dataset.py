@@ -109,7 +109,7 @@ class YOLODatasetCreator:
                 output_img_path = train_images_folder / f"{original_name}.jpg"
                 label_file = train_labels_folder / f"{original_name}.txt"
 
-                if counter % valid_interval == 0:
+                if valid_interval != 0 and counter % valid_interval == 0:
                     output_img_path = valid_images_folder / f"{original_name}.jpg"
                     label_file = valid_labels_folder / f"{original_name}.txt"
 
