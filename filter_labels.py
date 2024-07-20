@@ -98,10 +98,12 @@ class LabelFileProcessor:
                                         if self.config.bbox_folder
                                         else self.target_folder
                                     )
-                                    bbox[0] += yolo_box[0]
-                                    bbox[1] += yolo_box[1]
-                                    bbox[2] += yolo_box[0]
-                                    bbox[3] += yolo_box[1]
+                                    bbox = [
+                                        bbox[0] + yolo_box[0],
+                                        bbox[1] + yolo_box[1],
+                                        bbox[2] + yolo_box[0],
+                                        bbox[3] + yolo_box[1],
+                                    ]
                                     self.extract_and_save_image(
                                         original_file_name,
                                         bbox,

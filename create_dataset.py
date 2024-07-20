@@ -43,7 +43,12 @@ class YOLODatasetCreator:
     def save_yolo_bbox(self, label_file, data, bbox):
         if "yolo_box" in data:
             yolo_box = data["yolo_box"]
-            bbox = [bbox[0] + yolo_box[0], bbox[1] + yolo_box[1], bbox[2], bbox[3]]
+            bbox = [
+                bbox[0] + yolo_box[0],
+                bbox[1] + yolo_box[1],
+                bbox[2] + yolo_box[0],
+                bbox[3] + yolo_box[1],
+            ]
 
         yolo_bbox = self.convert_bbox_to_yolo((data["width"], data["height"]), bbox)
 
