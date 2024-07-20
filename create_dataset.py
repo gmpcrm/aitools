@@ -40,7 +40,13 @@ class YOLODatasetCreator:
         height = height * dh
         return (x_center, y_center, width, height)
 
-    def save_yolo_bbox(self, label_file, data, bbox):
+    def save_yolo_bbox(self, label_file, data, yolo_box, bbox):
+        if yolo_box:
+            bbox[0] += yolo_box[0]
+            bbox[1] += yolo_box[1]
+            bbox[2] += yolo_box[0]
+            bbox[3] += yolo_box[1]
+
         yolo_bbox = self.convert_bbox_to_yolo((data["width"], data["height"]), bbox)
 
         with open(label_file, "a", encoding="utf-8") as label_file:
@@ -114,6 +120,10 @@ class YOLODatasetCreator:
                     label_file = valid_labels_folder / f"{original_name}.txt"
 
                 img.save(output_img_path, "JPEG")
+                yolo_box = []
+                if "yolo_box" in data:
+                    yolo_box = data["yolo_box"]
+
                 bboxes = []
                 if "florence_results" in data:
                     florence_results = next(
@@ -122,15 +132,17 @@ class YOLODatasetCreator:
                     if florence_results:
                         bboxes = florence_results["bboxes"]
                         if index < len(bboxes):
-                            self.save_yolo_bbox(label_file, data, bboxes[index])
+                            self.save_yolo_bbox(
+                                label_file, data, yolo_box, bboxes[index]
+                            )
                 elif "bboxes" in data:
                     bboxes = data["bboxes"]
                     if index < len(bboxes):
-                        self.save_yolo_bbox(label_file, data, bboxes[index])
+                        self.save_yolo_bbox(label_file, data, yolo_box, bboxes[index])
                 elif "sliced_yolo_boxes" in data:
                     bboxes = data["sliced_yolo_boxes"]
                     for bbox in bboxes:
-                        self.save_yolo_bbox(label_file, data, bbox)
+                        self.save_yolo_bbox(label_file, data, yolo_box, bbox)
 
                 counter += 1
 
