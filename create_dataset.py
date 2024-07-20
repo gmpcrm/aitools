@@ -63,7 +63,7 @@ class YOLODatasetCreator:
         florence_pattern = re.compile(r"^(.*)\.florence\.(\d+)\.png$")
         yolo_pattern = re.compile(r"^(.*)\.(\d+)\.png$")
         counter = 0
-        valid_interval = 100 // self.config.valid
+        valid_interval = 100 // self.config.valid if self.config.valid > 0 else 0
 
         files = [
             f
