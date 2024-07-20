@@ -56,8 +56,8 @@ def draw_bounding_boxes(source_folder, target_folder):
 
 
 # Указание путей
-source_folder = "g:/My Drive/AIProplex/testdata2/dataset/train"
-source_folder = "g:/My Drive/AIProplex/datasets/001/Dataset/train"
+source_folder = "g:/My Drive/AIProplex/testdata3/dataset/train"
+# source_folder = "g:/My Drive/AIProplex/datasets/006/Dataset/train"
 target_folder = "c:/proplex/test"
 
 # Запуск функции
