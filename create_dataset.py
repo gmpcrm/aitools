@@ -117,7 +117,7 @@ class YOLODatasetCreator:
                 bboxes = []
                 if "florence_results" in data:
                     florence_results = next(
-                        iter(data["florence_results"].values()), None
+                        iter(data["florence_results"][0].values()), None
                     )
                     if florence_results:
                         bboxes = florence_results["bboxes"]
