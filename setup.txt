@@ -41,3 +41,8 @@ git clone https://github.com/mindee/doctr.git
 git submodule add https://github.com/mindee/doctr.git doctr
 cd doctr
 pip install -e .[torch]
+
+#easyocr
+pip install easyocr
+pip install pdf2image
+pip install git+https://github.com/JaidedAI/EasyOCR.git

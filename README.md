@@ -32,7 +32,7 @@ detect_segments.py
 ## Использование
 
 ```bash
-python utils\detect_segments.py --source d:/video/new --fps 0.1 --device cuda --segments segments.txt --results details.json --class_id 0 --model_weights yolov10s.pt --confidence 0.7 --border 0.20 --gap 20
+python detect_segments.py --source d:/video/new --fps 0.1 --device cuda --segments segments.txt --results details.json --class_id 0 --model_weights yolov10s.pt --confidence 0.7 --border 0.20 --gap 20
 ```
 
 # 2. Утилита обработки видеосегментов
@@ -58,7 +58,7 @@ process_segments.py
 ## Использование
 
 ```bash
-python utils\process_segments.py --segments segments.txt --delete_folder d:/video/deleted --newsegments segments_split.txt --mintime 300
+python process_segments.py --segments segments.txt --delete_folder d:/video/deleted --newsegments segments_split.txt --mintime 300
 ```
 
 Утилита обрабатывает входной файл с сегментами, удаляет сегменты короче указанной длительности, перемещает файлы без подходящих сегментов в указанную папку и сохраняет результаты в новый файл.
@@ -100,7 +100,7 @@ extract_segments.py
 ## Пример использования
 
 ```bash
-python utils\extract_segments.py --segments segments_split.txt --target_folder d:/video/clips
+python extract_segments.py --segments segments_split.txt --target_folder d:/video/clips
 ```
 
 Вот пример использования программы VideoFileSorter для README.md на русском языке:
@@ -119,7 +119,7 @@ python utils\extract_segments.py --segments segments_split.txt --target_folder d
 ## Использование
 
 ```bash
-python utils\sort_clips.py --source_folder d:/video/clips --target_folder d:/video/sorted
+python sort_clips.py --source_folder d:/video/clips --target_folder d:/video/sorted
 ```
 
 ### Параметры
@@ -174,7 +174,7 @@ extract_frames.py
 ## Использование
 
 ```bash
-python utils\extract_frames.py --source_folder d:/video/sorted --target_folder d:/video/results --fps 0.02 --subfolders True
+python extract_frames.py --source_folder d:/video/sorted --target_folder d:/video/results --fps 0.02 --subfolders True
 ```
 
 ## Результаты
@@ -231,7 +231,7 @@ python utils\extract_frames.py --source_folder d:/video/sorted --target_folder d
 ## Использование
 
 ```bash
-python utils\detect_florence.py --source_folder c:/video/2024-05-10 --target_folder c:/video/florence --general_prompt "locate gloves on people hands" --class_prompts "0=locate gloves" "1=locate people" "2=locate hands" --mode "images" --save_boxes --device cpu
+python detect_florence.py --source_folder c:/video/2024-05-10 --target_folder c:/video/florence --general_prompt "locate gloves on people hands" --class_prompts "0=locate gloves" "1=locate people" "2=locate hands" --mode "images" --save_boxes --device cpu
 ```
 
 Программа обрабатывает все видеофайлы или изображения в указанной директории, применяет детекцию объектов с помощью YOLOv10 и анализирует результаты с использованием Microsoft Florence-2. Результаты сохраняются в отдельных папках для каждого видео или набора изображений, включая JSON-файлы с детальной информацией и изображения обнаруженных объектов.
@@ -263,7 +263,7 @@ python utils\detect_florence.py --source_folder c:/video/2024-05-10 --target_fol
 ## Использование
 
 ```bash
-python utils\copy_files.py --source_folder c:/proplex/florence --target_folder c:/proplex/florence.new --ignore_folders c:/proplex/florence.good c:/proplex/florence.bad --mask *.florence.*
+python copy_files.py --source_folder c:/proplex/florence --target_folder c:/proplex/florence.new --ignore_folders c:/proplex/florence.good c:/proplex/florence.bad --mask *.florence.*
 ```
 
 Этот пример сканирует папку `c:/proplex/florence` на наличие файлов, соответствующих маске `*.florence.*`, игнорирует файлы из папок `c:/proplex/florence.good` и `c:/proplex/florence.bad`, и копирует найденные файлы в папку `c:/proplex/florence.new`.
@@ -306,7 +306,7 @@ dataset/
 Для запуска утилиты используйте команду:
 
 ```bash
-python utils\create_dataset.py --source_folder c:/proplex/florence --data_folder c:/proplex/florence.good --dataset_folder c:/proplex/dataset --class_id 0 --valid 20
+python create_dataset.py --source_folder c:/proplex/florence --data_folder c:/proplex/florence.good --dataset_folder c:/proplex/dataset --class_id 0 --valid 20
 ```
 
 Эта команда запустит процесс создания датасета, в ходе которого изображения и аннотации будут преобразованы и сохранены в соответствующие папки, разделенные на тренировочные и валидационные наборы.
@@ -335,7 +335,43 @@ python utils\create_dataset.py --source_folder c:/proplex/florence --data_folder
 ## Использование
 
 ```bash
-python utils\filter_labels.py --source_folder c:/proplex/labels.florence --target_folder c:/proplex/labels.new --label_filter "text label" "inscription" --extract
+python filter_labels.py --source_folder c:/proplex/labels.florence --target_folder c:/proplex/labels.new --label_filter "text label" "inscription" --extract
 ```
 
 Этот пример сканирует папку `c:/proplex/florence` на наличие файлов JSON, фильтрует метки в JSON файлах по значениям "text label" и "inscription", и копирует изображения, соответствующие отфильтрованным меткам, в папку `c:/proplex/florence.new`.
+
+## 10. Утилита для перемещения изображений по размеру и построения гистограмм
+
+`sort_images.py`
+
+Эта утилита предназначена для сканирования папки с изображениями, построения гистограмм их ширины и высоты, и перемещения изображений в целевую папку, если их размеры не соответствуют заданным критериям.
+
+### Основные функции
+
+- Сканирование указанной папки для изображений
+- Построение гистограмм ширины и высоты изображений
+- Перемещение изображений в целевую папку, если их размеры не соответствуют заданным критериям
+
+### Параметры
+
+- `--source_folder`: Путь к исходной папке с изображениями (по умолчанию: "~/data/source")
+- `--target_folder`: Путь к целевой папке для перемещения изображений (по умолчанию: "~/data/target")
+- `--min_height`: Минимальная высота изображений для перемещения (по умолчанию: None)
+- `--max_height`: Максимальная высота изображений для перемещения (по умолчанию: None)
+- `--min_width`: Минимальная ширина изображений для перемещения (по умолчанию: None)
+- `--max_width`: Максимальная ширина изображений для перемещения (по умолчанию: None)
+
+### Пример использования
+
+```bash
+python sort_images.py --source_folder ~/data/source --target_folder ~/data/target --min_height 200 --max_height 800 --min_width 200 --max_width 800
+```
+
+Этот пример сканирует папку `~/data/source` на наличие изображений, строит гистограммы их ширины и высоты, и перемещает изображения в папку `~/data/target`, если их размеры не соответствуют заданным критериям.
+
+### Результаты
+
+- Изображения, не соответствующие заданным размерам, будут перемещены в целевую папку.
+- Гистограммы ширины и высоты изображений будут сохранены в файлы `width_histogram.png` и `height_histogram.png` соответственно.
+
+Этот скрипт помогает автоматизировать процесс сортировки изображений по их размерам, а также предоставляет наглядное представление о распределении размеров изображений в указанной папке.

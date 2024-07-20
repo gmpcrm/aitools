@@ -169,14 +169,14 @@ def main():
 
     parser.add_argument(
         "--source_folder",
-        default=config.source_folder,
         type=str,
+        required=True,
         help="Путь к исходной папке",
     )
     parser.add_argument(
         "--target_folder",
         type=str,
-        default=config.target_folder,
+        required=True,
         help="Путь к папке для сохранения скопированных файлов",
     )
     parser.add_argument(
@@ -206,7 +206,13 @@ def main():
         "--query",
         type=str,
         default=config.query,
-        help="Ключ для получения данных из florence",
+        help="Запрос для получения данных из florence",
+    )
+    parser.add_argument(
+        "--filter_match",
+        choices=["substr", "exact"],
+        default=config.filter_match,
+        help="Тип сравнения фильтров",
     )
 
     args = parser.parse_args()
