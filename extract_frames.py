@@ -5,12 +5,6 @@ from tqdm import tqdm
 from transliterate import translit
 
 
-def transliterate_path(path):
-    parts = path.parts
-    transliterated_parts = [translit(part, "ru", reversed=True) for part in parts]
-    return Path(*transliterated_parts)
-
-
 class Config:
     def __init__(
         self,
@@ -18,13 +12,13 @@ class Config:
         target_folder="~/data/frames/",
         fps=-1.0,
         subfolders=True,
-        ext="png",
+        format="png",
     ):
         self.source_folder = source_folder
         self.target_folder = target_folder
         self.subfolders = subfolders
-        self.ext = ext
         self.fps = fps
+        self.format = format
 
 
 class VideoFrameExtractor:
@@ -33,6 +27,7 @@ class VideoFrameExtractor:
         self.source_folder = Path(config.source_folder).expanduser()
         self.target_folder = Path(config.target_folder).expanduser()
 
+        self.target_folder = self._transliterate_path(self.target_folder)
         self.target_folder.mkdir(parents=True, exist_ok=True)
         self.frames_file = self.target_folder / "frames.txt"
         self.processed_videos = self._load_processed_videos()
@@ -48,8 +43,8 @@ class VideoFrameExtractor:
 
     def _transliterate_path(self, path):
         parts = path.parts
-        transliterated_parts = [translit(part, "ru", reversed=True) for part in parts]
-        return Path(*transliterated_parts)
+        parts = [translit(part, "ru", reversed=True) for part in parts]
+        return Path(*parts)
 
     def get_files(self, source, ext):
         pattern = f"**/*.{ext}" if self.config.subfolders else f"*.{ext}"
@@ -99,9 +94,7 @@ class VideoFrameExtractor:
                         break
 
                     frame_count += 1
-                    output_filename = (
-                        f"{video_path.stem}.{frame_count:03d}.{self.config.ext}"
-                    )
+                    output_filename = f"{translit(video_path.stem, 'ru', reversed=True)}.{frame_count:06d}.{self.config.format}"
                     output_path = output_subfolder / output_filename
 
                     cv2.imwrite(str(output_path), frame)
@@ -145,6 +138,13 @@ def main():
         type=float,
         default=config.fps,
         help="Частота извлечения кадров (-1 для всех кадров)",
+    )
+    parser.add_argument(
+        "--format",
+        type=str,
+        default=config.format,
+        choices=["png", "jpg"],
+        help="Формат сохранения извлеченных кадров (png или jpg)",
     )
 
     parser.add_argument(

@@ -4,7 +4,6 @@ __pycache__/*
 test.py
 filter_labels copy.py
 create_dataset copy.py
-test_labels.py
 test_dupes.py
 doctr_test.py
 width_histogram.png
@@ -15,3 +14,6 @@ test_doctr copy.py
 test_doctr_boxes.py
 test_doctr_full_boxes.py
 test_doctr.py
+detect_yolo copy.py
+test_labels.py
+extract_frames copy.py

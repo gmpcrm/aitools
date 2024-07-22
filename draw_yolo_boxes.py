@@ -1,5 +1,5 @@
 import os
-import cv2
+from PIL import Image, ImageDraw, ImageFont
 
 
 def draw_bounding_boxes(source_folder, target_folder):
@@ -13,7 +13,8 @@ def draw_bounding_boxes(source_folder, target_folder):
         if image_file.endswith(".jpg") or image_file.endswith(".png"):
             # Загрузка изображения
             image_path = os.path.join(images_folder, image_file)
-            image = cv2.imread(image_path)
+            image = Image.open(image_path)
+            draw = ImageDraw.Draw(image)
 
             # Поиск соответствующего файла меток
             label_file = image_file.replace(".jpg", ".txt").replace(".png", ".txt")
@@ -26,7 +27,7 @@ def draw_bounding_boxes(source_folder, target_folder):
                         class_id = int(parts[0])
                         x_center, y_center, width, height = map(float, parts[1:])
 
-                        img_height, img_width = image.shape[:2]
+                        img_width, img_height = image.size
                         x_center *= img_width
                         y_center *= img_height
                         width *= img_width
@@ -38,25 +39,20 @@ def draw_bounding_boxes(source_folder, target_folder):
                         y2 = int(y_center + height / 2)
 
                         # Отрисовка bounding box
-                        color = (0, 255, 0)
-                        cv2.rectangle(image, (x1, y1), (x2, y2), color, 2)
-                        cv2.putText(
-                            image,
-                            str(class_id),
-                            (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.9,
-                            color,
-                            2,
-                        )
+                        color = "green"
+                        draw.rectangle([x1, y1, x2, y2], outline=color, width=2)
+
+                        # Отрисовка текста класса
+                        font = ImageFont.load_default()
+                        draw.text((x1, y1 - 10), str(class_id), fill=color, font=font)
 
             # Сохранение изображения с отрисованными bounding boxes
             output_path = os.path.join(target_folder, image_file)
-            cv2.imwrite(output_path, image)
+            image.save(output_path)
 
 
 # Указание путей
-source_folder = "g:/My Drive/AIProplex/testdata3/dataset/train"
+source_folder = "c:/proplex/label2/dataset/train"
 # source_folder = "g:/My Drive/AIProplex/datasets/006/Dataset/train"
 target_folder = "c:/proplex/test"
 

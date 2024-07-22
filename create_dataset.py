@@ -69,8 +69,9 @@ class YOLODatasetCreator:
         valid_images_folder.mkdir(parents=True, exist_ok=True)
         valid_labels_folder.mkdir(parents=True, exist_ok=True)
 
-        florence_pattern = re.compile(r"^(.*)\.florence\.(\d+)\.png$")
-        yolo_pattern = re.compile(r"^(.*)\.(\d+)\.png$")
+        florence_pattern = re.compile(r"^(.*)\.florence\.(\d{3})\.png$")
+        yolo_pattern1 = re.compile(r"^(.*)\.yolo\.(\d{3})\.png$")
+        yolo_pattern2 = re.compile(r"^(.*)\.(\d{3})\.png$")
         counter = 0
         valid_interval = 100 // self.config.valid if self.config.valid > 0 else 0
 
@@ -87,14 +88,22 @@ class YOLODatasetCreator:
                 index_str = match.group(2)
                 index = int(index_str)
             else:
-                match = yolo_pattern.match(file_name)
+                match = yolo_pattern1.match(file_name)
                 if match:
                     original_name = match.group(1)
                     index_str = match.group(2)
                     index = int(index_str)
-                    original_name = f"{original_name}.{index_str}"
                     index_str = ""
                     index = 0
+                else:
+                    match = yolo_pattern2.match(file_name)
+                    if match:
+                        original_name = match.group(1)
+                        index_str = match.group(2)
+                        index = int(index_str)
+                        original_name = f"{original_name}.{index_str}"
+                        index_str = ""
+                        index = 0
 
             if not match:
                 continue
@@ -103,16 +112,21 @@ class YOLODatasetCreator:
             json_file_path = (
                 Path(self.config.source_folder).expanduser() / json_file_name
             )
+
             original_img_path = (
                 Path(self.config.source_folder).expanduser() / f"{original_name}.png"
             )
 
-            if json_file_path.exists() and original_img_path.exists():
+            if json_file_path.exists():
                 with open(json_file_path, "r", encoding="utf-8") as json_file:
                     data = json.load(json_file)
 
                 if "file" in data and os.path.exists(data["file"]):
                     original_img_path = data["file"]
+
+                if not os.path.exists(original_img_path):
+                    print(f"File {original_img_path} not found")
+                    continue
 
                 img = Image.open(original_img_path)
                 output_img_path = train_images_folder / f"{original_name}.jpg"
@@ -139,6 +153,11 @@ class YOLODatasetCreator:
                 elif "sliced_yolo_boxes" in data:
                     bboxes = data["sliced_yolo_boxes"]
                     for bbox in bboxes:
+                        self.save_yolo_bbox(label_file, data, bbox)
+                elif "yolo" in data:
+                    yolo_data = data["yolo"]
+                    if index < len(yolo_data):
+                        bbox = yolo_data[index]["bbox"]
                         self.save_yolo_bbox(label_file, data, bbox)
 
                 counter += 1
