@@ -103,8 +103,6 @@ extract_segments.py
 python extract_segments.py --segments segments_split.txt --target_folder d:/video/clips
 ```
 
-Вот пример использования программы VideoFileSorter для README.md на русском языке:
-
 # 4. Сортировщик видеофайлов
 
 `sort_clips.py` - это утилита для организации видеофайлов по папкам на основе информации о камере и дате, извлеченной из имен файлов.

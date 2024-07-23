@@ -110,8 +110,8 @@ class OCRProcessor:
     def draw_boxes(self, image_path, results):
         image = cv2.imread(str(image_path))
         for result in results:
-            top_left = tuple(result[0][0])
-            bottom_right = tuple(result[0][2])
+            top_left = tuple(map(int, result[0][0]))
+            bottom_right = tuple(map(int, result[0][2]))
             cv2.rectangle(image, top_left, bottom_right, (0, 255, 0), 2)
         output_image_path = (
             self.target_folder / f"{image_path.stem}.{self.prefix}.box.png"
