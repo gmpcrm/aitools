@@ -6,3 +6,4 @@ from .filter_labels import run, run_config
 from .create_dataset import run, run_config
 from .sort_images import run, run_config
 from .detect_yolo import run, run_config
+from .detect_easyocr import run, run_config

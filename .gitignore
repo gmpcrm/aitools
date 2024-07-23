@@ -8,7 +8,6 @@ test_dupes.py
 doctr_test.py
 width_histogram.png
 height_histogram.png
-test_easyocrt.py
 test_doctr copy 2.py
 test_doctr copy.py
 test_doctr_boxes.py
@@ -17,3 +16,4 @@ test_doctr.py
 detect_yolo copy.py
 test_labels.py
 extract_frames copy.py
+test_easyocr.py
