@@ -6,12 +6,13 @@ from PIL import Image, ImageDraw, ImageFont
 class Config:
     def __init__(
         self,
-        font_folder="c:/fonts/mix1",
-        font=None,
-        text="PROPLEX 4л1 ГОСТ N 30673 28.06.2024 16:08",
+        font_folder="c:/fonts/fira",
+        font="FiraSans-Light.ttf",
+        text="ПВХ PROPLEX  L  1.063  N  ГОСТ 30673  18 072024  10  54  7л2",
         size=(1200, 60),
         target_folder="c:/proplex/font_images",
         subfolder=False,
+        letter_spacing=-1,
     ):
         self.font = font
         self.text = text
@@ -19,6 +20,9 @@ class Config:
         self.font_folder = font_folder
         self.target_folder = target_folder
         self.subfolder = subfolder
+        self.letter_spacing = letter_spacing
+        self.back_color = (189, 189, 189)
+        self.text_color = (124, 124, 124)
 
 
 class FontImageCreator:
@@ -27,7 +31,7 @@ class FontImageCreator:
 
     def create_image_with_text(self, font_path, font_name=None):
         width, height = self.config.size
-        image = Image.new("RGB", (width, height), color=(255, 255, 255))
+        image = Image.new("RGB", (width, height), color=self.config.back_color)
         draw = ImageDraw.Draw(image)
 
         try:
@@ -36,25 +40,23 @@ class FontImageCreator:
             print(f"Не удалось загрузить шрифт {font_path}")
             return
 
-        # Использование textbbox для получения размеров текста
-        try:
-            textbbox = draw.textbbox((0, 0), self.config.text, font=font)
-            textwidth = textbbox[2] - textbbox[0]
-            textheight = textbbox[3] - textbbox[1]
-            x = (width - textwidth) // 2
-            y = (height - textheight) // 2
+        # Центрирование текста по вертикали
+        text_width, text_height = draw.textbbox((0, 0), self.config.text, font=font)[2:]
+        y = (height - text_height) // 2
 
-            draw.text((x, y), self.config.text, font=font, fill=(0, 0, 0))
+        # Рисование текста с заданным интервалом вручную
+        x = 50
+        for char in self.config.text:
+            draw.text((x, y), char, font=font, fill=self.config.text_color)
+            x += font.getbbox(char)[2] + self.config.letter_spacing
 
-            if font_name:
-                file_name = f"{font_name}.png"
-            else:
-                file_name = f"{os.path.basename(font_path)}.png"
+        if font_name:
+            file_name = f"{font_name}.png"
+        else:
+            file_name = f"{os.path.basename(font_path)}.png"
 
-            image.save(os.path.join(self.config.target_folder, file_name))
-            print(f"Сохранено изображение с шрифтом {font_path} как {file_name}")
-        except Exception as e:
-            print(f"Ошибка при создании изображения: {e}")
+        image.save(os.path.join(self.config.target_folder, file_name))
+        print(f"Сохранено изображение с шрифтом {font_path} как {file_name}")
 
     def create_images(self):
         if not os.path.exists(self.config.target_folder):

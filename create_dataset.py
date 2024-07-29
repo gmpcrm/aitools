@@ -5,6 +5,7 @@ from pathlib import Path
 import re
 from PIL import Image
 from tqdm import tqdm
+import random
 
 
 class Config:
@@ -15,12 +16,14 @@ class Config:
         dataset_folder="~/data/dataset",
         valid=20,  # Default validation percentage
         class_id=0,  # Default class ID for YOLO
+        shuffle=False,  # Default shuffle option
     ):
         self.source_folder = source_folder
         self.data_folder = data_folder
         self.dataset_folder = dataset_folder
         self.valid = valid
         self.class_id = class_id
+        self.shuffle = shuffle
 
 
 class YOLODatasetCreator:
@@ -69,9 +72,13 @@ class YOLODatasetCreator:
         valid_images_folder.mkdir(parents=True, exist_ok=True)
         valid_labels_folder.mkdir(parents=True, exist_ok=True)
 
-        florence_pattern = re.compile(r"^(.*)\.florence\.(\d{3})\.png$")
-        yolo_pattern1 = re.compile(r"^(.*)\.yolo\.(\d{3})\.png$")
-        yolo_pattern2 = re.compile(r"^(.*)\.(\d{3})\.png$")
+        file_patterns = [
+            re.compile(r"^(.*)\.florence\.(\d{3})\.png$"),
+            re.compile(r"^(.*)\.yolo\.(\d{3})\.png$"),
+            re.compile(r"^(.*)\.(\d{3})\.png$"),
+            re.compile(r"^(.*\.ocr\.box)\.json$"),
+        ]
+
         counter = 0
         valid_interval = 100 // self.config.valid if self.config.valid > 0 else 0
 
@@ -81,32 +88,28 @@ class YOLODatasetCreator:
             if f.endswith(".png")
         ]
 
-        for file_name in tqdm(files, desc="Processing files"):
-            match = florence_pattern.match(file_name)
-            if match:
-                original_name = match.group(1)
-                index_str = match.group(2)
-                index = int(index_str)
-            else:
-                match = yolo_pattern1.match(file_name)
-                if match:
-                    original_name = match.group(1)
-                    index_str = match.group(2)
-                    index = int(index_str)
-                    index_str = ""
-                    index = 0
-                else:
-                    match = yolo_pattern2.match(file_name)
-                    if match:
-                        original_name = match.group(1)
-                        index_str = match.group(2)
-                        index = int(index_str)
-                        original_name = f"{original_name}.{index_str}"
-                        index_str = ""
-                        index = 0
+        if not files:
+            files = [
+                f
+                for f in os.listdir(Path(self.config.data_folder).expanduser())
+                if f.endswith(".json")
+            ]
 
+        if self.config.shuffle:
+            random.shuffle(files)
+
+        for file_name in tqdm(files, desc="Processing files"):
+            match = None
+            for pattern in file_patterns:
+                match = pattern.match(file_name)
+                if match:
+                    break
             if not match:
                 continue
+
+            original_name = match.group(1)
+            index_str = match.group(2) if len(match.groups()) > 1 else "0"
+            index = int(index_str)
 
             json_file_name = f"{original_name}.json"
             json_file_path = (
@@ -117,50 +120,43 @@ class YOLODatasetCreator:
                 Path(self.config.source_folder).expanduser() / f"{original_name}.png"
             )
 
-            if json_file_path.exists():
-                with open(json_file_path, "r", encoding="utf-8") as json_file:
-                    data = json.load(json_file)
+            if not json_file_path.exists():
+                print(f"JSON файл {json_file_path} не найден")
+                continue
 
-                if "file" in data and os.path.exists(data["file"]):
-                    original_img_path = data["file"]
+            with open(json_file_path, "r", encoding="utf-8") as json_file:
+                data = json.load(json_file)
 
-                if not os.path.exists(original_img_path):
-                    print(f"File {original_img_path} not found")
-                    continue
+            if "file" in data and os.path.exists(data["file"]):
+                original_img_path = Path(data["file"])
 
-                img = Image.open(original_img_path)
-                output_img_path = train_images_folder / f"{original_name}.jpg"
-                label_file = train_labels_folder / f"{original_name}.txt"
+            if not original_img_path.exists():
+                print(f"Файл {original_img_path} не найден")
+                continue
 
-                if valid_interval != 0 and counter % valid_interval == 0:
-                    output_img_path = valid_images_folder / f"{original_name}.jpg"
-                    label_file = valid_labels_folder / f"{original_name}.txt"
+            img = Image.open(original_img_path)
+            output_img_path = train_images_folder / f"{original_name}.jpg"
+            label_file = train_labels_folder / f"{original_name}.txt"
 
-                img.save(output_img_path, "JPEG")
-                bboxes = []
-                if "florence_results" in data:
-                    florence_results = next(
-                        iter(data["florence_results"][0].values()), None
-                    )
-                    if florence_results:
-                        bboxes = florence_results["bboxes"]
-                        if index < len(bboxes):
-                            self.save_yolo_bbox(label_file, data, bboxes[index])
-                elif "bboxes" in data:
-                    bboxes = data["bboxes"]
-                    if index < len(bboxes):
-                        self.save_yolo_bbox(label_file, data, bboxes[index])
-                elif "sliced_yolo_boxes" in data:
-                    bboxes = data["sliced_yolo_boxes"]
-                    for bbox in bboxes:
-                        self.save_yolo_bbox(label_file, data, bbox)
-                elif "yolo" in data:
-                    yolo_data = data["yolo"]
-                    if index < len(yolo_data):
-                        bbox = yolo_data[index]["bbox"]
-                        self.save_yolo_bbox(label_file, data, bbox)
+            if valid_interval != 0 and counter % valid_interval == 0:
+                output_img_path = valid_images_folder / f"{original_name}.jpg"
+                label_file = valid_labels_folder / f"{original_name}.txt"
 
-                counter += 1
+            img.save(output_img_path, "JPEG")
+            bboxes = (
+                data.get("florence_results", [{}])[0].get("bboxes", [])
+                if "florence_results" in data
+                else data.get("bboxes", [])
+            )
+            if "sliced_yolo_boxes" in data:
+                bboxes = data["sliced_yolo_boxes"]
+            if "yolo" in data and index < len(data["yolo"]):
+                bboxes = [data["yolo"][index]["bbox"]]
+
+            for bbox in bboxes:
+                self.save_yolo_bbox(label_file, data, bbox)
+
+            counter += 1
 
 
 def run(**kwargs):
@@ -206,6 +202,11 @@ def main():
         type=int,
         default=config.class_id,
         help="Идентификатор класса для YOLO",
+    )
+    parser.add_argument(
+        "--shuffle",
+        action="store_true",
+        help="Перемешать файлы перед обработкой",
     )
 
     args = parser.parse_args()

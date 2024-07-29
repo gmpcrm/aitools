@@ -46,3 +46,20 @@ pip install -e .[torch]
 pip install easyocr
 pip install pdf2image
 pip install git+https://github.com/JaidedAI/EasyOCR.git
+
+# TextRecognitionDataGenerator
+git clone https://github.com/Belval/TextRecognitionDataGenerator.git
+
+# pytesseract
+pip install pytesseract
+
+# tensorflow sklearn
+pip install tensorflow scikit-learn
+
+# torch 11.7
+pip uninstall torch torchvision torchaudio
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu117
+
+# torch 12.5
+pip uninstall torch torchvision torchaudio
+pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu125

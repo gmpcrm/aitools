@@ -17,3 +17,6 @@ detect_yolo copy.py
 test_labels.py
 extract_frames copy.py
 test_easyocr.py
+detect_tesseract copy.py
+repair_ocr_labels.py
+test_trdg.py
