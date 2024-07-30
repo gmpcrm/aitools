@@ -179,12 +179,6 @@ def run_config(config):
 
 def main():
     config = Config()
-    config.source_folder = "c:/proplex/label3/yolo"
-    config.target_folder = "c:/proplex/label3/ocr"
-    config.confidence = 0.6
-    config.draw_boxes = True
-    config.save_boxes = True
-    config.measure_time = True
 
     parser = argparse.ArgumentParser(
         description="Утилита для распознавания текста с изображений с использованием Tesseract OCR"
