@@ -50,8 +50,13 @@ pip install git+https://github.com/JaidedAI/EasyOCR.git
 # TextRecognitionDataGenerator
 git clone https://github.com/Belval/TextRecognitionDataGenerator.git
 
-# pytesseract
-pip install pytesseract
+# pytesseract albumentations 
+pip install pytesseract albumentations
+
+#graphviz pydot
+https://graphviz.gitlab.io/download/
+pip install graphviz pydot
+
 
 # tensorflow sklearn
 pip install tensorflow scikit-learn

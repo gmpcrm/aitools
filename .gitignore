@@ -20,3 +20,4 @@ test_easyocr.py
 detect_tesseract copy.py
 repair_ocr_labels.py
 test_trdg.py
+train_ocr copy.py

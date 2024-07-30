@@ -26,7 +26,8 @@ class OCRProcessor:
                     data = json.load(f)
 
                 base_file_name = os.path.splitext(file_name)[0]
-                for index, item in enumerate(data["easyocr"]):
+                ocr_data = data.get("tesseract", data.get("easyocr", []))
+                for index, item in enumerate(ocr_data):
                     png_file_name = f"{base_file_name}.{index:03d}.png"
                     png_file_path = source_folder / png_file_name
 

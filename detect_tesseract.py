@@ -7,7 +7,7 @@ from pathlib import Path
 from tqdm import tqdm
 import time
 
-pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+# pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 
 
 class Config:
@@ -76,7 +76,10 @@ class OCRProcessor:
         start_time = time.time()
 
         results = pytesseract.image_to_data(
-            source, lang=self.config.lang, output_type=pytesseract.Output.DICT
+            source,
+            lang=self.config.lang,
+            output_type=pytesseract.Output.DICT,
+            config="--psm 11",  # 11 - Обрабатывает изображение как один текстовый блок в виде горизонтальной строки текста.
         )
         elapsed_time = time.time() - start_time
 
