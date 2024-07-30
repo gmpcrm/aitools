@@ -81,7 +81,7 @@ class OCRProcessor:
             source,
             lang=self.config.lang,
             output_type=pytesseract.Output.DICT,
-            config="--psm 11",  # 11 - Обрабатывает изображение как один текстовый блок в виде горизонтальной строки текста.
+            # config="--psm 11",  # 11 - Обрабатывает изображение как один текстовый блок в виде горизонтальной строки текста.
         )
         elapsed_time = time.time() - start_time
 
