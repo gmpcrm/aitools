@@ -3,7 +3,7 @@ from datetime import datetime
 import numpy as np
 import argparse
 
-from dataloader_ocr import DataLoader
+from .dataloader_ocr import DataLoader
 import tensorflow as tf
 
 print(f"TensorFlow version: {tf.__version__}")
@@ -166,6 +166,18 @@ class TrainModel:
         return tf.math.reduce_mean(loss)
 
     def init_lr_scheduler(self):
+        initial_learning_rate = 0.1
+        decay_steps = 10000
+        alpha = 0.01
+
+        lr_schedule = tf.keras.optimizers.schedules.CosineDecay(
+            initial_learning_rate=initial_learning_rate,
+            decay_steps=decay_steps,
+            alpha=alpha,
+        )
+
+        return lr_schedule
+
         if self.config.cosine_decay:
             if self.config.cosine_decay_warmup_epochs == 0:
                 return tf.keras.optimizers.schedules.CosineDecay(
