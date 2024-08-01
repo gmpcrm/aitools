@@ -3,7 +3,7 @@ from datetime import datetime
 import numpy as np
 import argparse
 
-from dataloader_ocr import DataLoader
+from .dataloader_ocr import DataLoader
 import tensorflow as tf
 
 print(f"TensorFlow version: {tf.__version__}")
