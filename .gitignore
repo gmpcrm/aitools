@@ -23,3 +23,4 @@ test_trdg.py
 train_ocr copy.py
 
 ocr_test1.py
+create_ocr_synth copy.py

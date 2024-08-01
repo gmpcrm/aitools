@@ -3,6 +3,8 @@ import argparse
 import json
 from PIL import Image, ImageDraw, ImageFont, ImageColor
 import numpy as np
+import random
+from tqdm import tqdm
 
 
 class Config:
@@ -15,6 +17,10 @@ class Config:
         json_file=None,
         background_color="white",
         text_color="black",
+        angle=0,
+        x_offset=0,
+        y_offset=0,
+        count=1,
     ):
         self.target_folder = target_folder
         self.font = font
@@ -23,6 +29,10 @@ class Config:
         self.json_file = json_file
         self.background_color = background_color
         self.text_color = text_color
+        self.angle = angle
+        self.x_offset = x_offset
+        self.y_offset = y_offset
+        self.count = count
 
 
 class TimeImageGenerator:
@@ -38,36 +48,61 @@ class TimeImageGenerator:
         background_color_rgb = ImageColor.getrgb(self.config.background_color)
         text_color_rgb = ImageColor.getrgb(self.config.text_color)
 
-        for hour in range(24):
-            for minute in range(60):
-                time_str = f"{hour:02}:{minute:02}"
-                image = Image.new(
-                    "RGB",
-                    (self.config.width, self.config.height),
-                    color=background_color_rgb,
-                )
-                draw = ImageDraw.Draw(image)
+        total_iterations = self.config.count * 24 * 60
+        with tqdm(total=total_iterations, desc="Generating images") as pbar:
+            for _ in range(self.config.count):
+                for hour in range(24):
+                    for minute in range(60):
+                        time_str = f"{hour:02}:{minute:02}"
+                        image = Image.new(
+                            "RGB",
+                            (self.config.width, self.config.height),
+                            color=background_color_rgb,
+                        )
+                        draw = ImageDraw.Draw(image)
 
-                bbox = draw.textbbox((0, 0), time_str, font=self.font)
-                text_width = bbox[2] - bbox[0]
-                text_height = bbox[3] - bbox[1]
+                        bbox = draw.textbbox((0, 0), time_str, font=self.font)
+                        text_x = 0
+                        text_y = 0
 
-                text_x = (self.config.width - text_width) // 2
-                # text_y = (self.config.height - text_height) // 2 + offset
-                text_y = 0
-                text_x = 0
+                        if self.config.x_offset != 0:
+                            text_x = random.randint(0, self.config.x_offset)
+                        if self.config.y_offset != 0:
+                            text_y = random.randint(0, self.config.y_offset)
 
-                draw.text(
-                    (text_x, text_y), time_str, font=self.font, fill=text_color_rgb
-                )
+                        draw.text(
+                            (text_x, text_y),
+                            time_str,
+                            font=self.font,
+                            fill=text_color_rgb,
+                        )
 
-                file_name = f"{hour:02}_{minute:02}.png"
-                file_path = os.path.join(self.config.target_folder, file_name)
-                file_path = os.path.normpath(file_path)
-                image.save(file_path)
+                        angle = 0
+                        if self.config.angle != 0:
+                            angle = random.uniform(
+                                -self.config.angle, self.config.angle
+                            )
+                            image = image.rotate(
+                                angle, expand=1, fillcolor=background_color_rgb
+                            )
 
-                if self.config.json_file:
-                    self.ocr_data.append({"file": file_path, "text": time_str})
+                        # Обрезка изображения до исходного размера
+                        image = image.crop(
+                            (0, 0, self.config.width, self.config.height)
+                        )
+
+                        file_name = f"{hour:02}_{minute:02}_{_}.png"
+                        file_path = os.path.join(self.config.target_folder, file_name)
+                        file_path = os.path.normpath(file_path)
+                        image.save(file_path)
+
+                        if self.config.json_file:
+                            ocr_entry = {"file": file_path, "text": time_str}
+                            if self.config.angle != 0:
+                                ocr_entry["angle"] = angle
+                            self.ocr_data.append(ocr_entry)
+
+                        pbar.update(1)
 
         if self.config.json_file:
             with open(self.config.json_file, "w", encoding="utf-8") as json_file:
@@ -99,6 +134,10 @@ def main():
     config.width = 200
     config.background_color = "rgb(181, 181, 181)"
     config.text_color = "rgb(139, 139, 139)"
+    config.angle = 0.7
+    config.x_offset = 7
+    config.y_offset = 5
+    config.count = 5
 
     parser = argparse.ArgumentParser(
         description="Утилита для создания синтетических текстовых данных для OCR"
@@ -144,6 +183,30 @@ def main():
         type=str,
         default=config.text_color,
         help="Цвет текста изображения",
+    )
+    parser.add_argument(
+        "--angle",
+        type=float,
+        default=config.angle,
+        help="Максимальный угол поворота текста",
+    )
+    parser.add_argument(
+        "--x_offset",
+        type=int,
+        default=config.x_offset,
+        help="Максимальное случайное смещение текста по горизонтали",
+    )
+    parser.add_argument(
+        "--y_offset",
+        type=int,
+        default=config.y_offset,
+        help="Максимальное случайное смещение текста по вертикали",
+    )
+    parser.add_argument(
+        "--count",
+        type=int,
+        default=config.count,
+        help="Количество повторений полного цикла генерации изображений",
     )
 
     args = parser.parse_args()
