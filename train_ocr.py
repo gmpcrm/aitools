@@ -11,11 +11,12 @@ print(f"TensorFlow version: {tf.__version__}")
 
 
 class Config:
+
     def __init__(
         self,
         source_files,
         log_dir="logs",
-        vocabulary="-0127436LPN.СГОВПХТE58ROXл:B _C9ASTIVР",
+        vocabulary="-0127436LNP.ВХПСГОТ58лOER-X: B_9CTASIVР",
         cosine_decay=True,
         cosine_decay_warmup_target=1e-4,
         cosine_decay_alpha=1e-12,
@@ -343,10 +344,24 @@ def run_config(config):
 
 
 def main():
-    base = "/content"
-    source_files = [f"{base}/synt/ocr.json"]
+    base = "/proplex"
+    source_files = [
+        f"{base}/label/ocr.json",
+        f"{base}/label1/ocr.json",
+        f"{base}/label2/ocr.json",
+        f"{base}/label3/ocr.json",
+        f"{base}/label4/ocr.json",
+    ]
     log_dir = f"{base}/logs"
-    config = Config(source_files=source_files, log_dir=log_dir)
+    config = Config(
+        source_files=source_files,
+        log_dir=log_dir,
+        batch_size=64,
+        epochs=300,
+        cosine_decay=False,
+        cosine_decay_restarts_initial_learning_rate=1e-3,
+        cosine_decay_restarts_first_decay_epochs=10,
+    )
     parser = argparse.ArgumentParser(description="Утилита для обучения модели OCR")
 
     parser.add_argument(

@@ -133,7 +133,7 @@ def main():
     ]
 
     config.source_files = source_files
-    config.max_length = 13
+    config.max_length = 9
 
     parser = argparse.ArgumentParser(description="Анализ OCR словаря")
 

@@ -133,6 +133,7 @@ class DataLoader(tf.keras.utils.Sequence):
 
         if self.augmentation:
             img = self.aug_gaussian_noise(image=img)["image"]
+
         return img, example["label"]
 
     def __getitem__(self, idx):
