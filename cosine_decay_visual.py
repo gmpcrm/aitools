@@ -11,7 +11,7 @@ total_steps = epochs * steps_per_epoch
 initial_learning_rate = 1e-3
 t_mul = 1.5
 m_mul = 0.7
-alpha = 1e-12
+alpha = 1e-6
 first_decay_epochs = 3
 first_decay_steps = steps_per_epoch * first_decay_epochs
 

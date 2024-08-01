@@ -88,6 +88,7 @@ def main():
     ]
     config.target_folder = f"/content/ocr"
     config.target_json = f"/content/ocr.json"
+    config.shuffle = True
 
     parser = argparse.ArgumentParser(
         description="Утилита для обработки JSON файлов и копирования изображений."
