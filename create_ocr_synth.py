@@ -134,7 +134,7 @@ class TimeImageGenerator:
 
         with tqdm(total=total_days, desc="Generating date images") as pbar:
             for single_date in (start_date + timedelta(n) for n in range(total_days)):
-                date_str = single_date.strftime("%d.%m.%Y")
+                date_str = single_date.strftime("%d%m%Y")
                 image, angle = self.generate_image(date_str)
                 file_name = f"date_{date_str}.png"
                 self.save_image(image, file_name, date_str, angle)
