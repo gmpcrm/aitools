@@ -75,7 +75,7 @@ class TrainModel:
             im_size=self.shape_inp_img,
             max_text_size=config.max_text_size,
             batch_size=config.batch_size,
-            split=80 / 10,
+            split=80,
             shuffle=False,
             augmentation=False,
         )
@@ -85,7 +85,7 @@ class TrainModel:
             im_size=self.shape_inp_img,
             max_text_size=config.max_text_size,
             batch_size=config.batch_size,
-            split=-20 / 10,
+            split=-20,
             shuffle=False,
             augmentation=False,
         )
