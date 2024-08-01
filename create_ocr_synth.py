@@ -105,6 +105,7 @@ class TimeImageGenerator:
         return image, angle
 
     def save_image(self, image, file_name, text, angle=0):
+        os.makedirs(self.config.target_folder, exist_ok=True)
         file_path = os.path.join(self.config.target_folder, file_name)
         file_path = os.path.normpath(file_path)
         image.save(file_path)
