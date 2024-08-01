@@ -2,6 +2,7 @@ import pandas as pd
 import json
 from collections import Counter
 import argparse
+import cv2
 
 
 class Config:
@@ -20,6 +21,7 @@ class OCRVocabulary:
         self.missing_chars = self.get_missing_chars()
         self.full_vocab = self.real_vocab + self.missing_chars
         self.max_text_length = self.get_max_text_length()
+        self.min_max_dimensions = self.get_min_max_dimensions()
 
     def load_data(self):
         all_data = []
@@ -59,6 +61,29 @@ class OCRVocabulary:
     def get_max_text_length(self):
         return max(len(item["text"]) for item in self.data)
 
+    def get_min_max_dimensions(self):
+        heights = []
+        widths = []
+        for item in self.data:
+            image_path = item.get("file")
+            if image_path:
+                try:
+                    img = cv2.imread(image_path)
+                    if img is not None:
+                        height, width = img.shape[:2]
+                        heights.append(height)
+                        widths.append(width)
+                    else:
+                        print(f"Не удалось прочитать изображение: {image_path}")
+                except Exception as e:
+                    print(f"Ошибка при чтении файла {image_path}: {e}")
+
+        min_height = min(heights) if heights else None
+        max_height = max(heights) if heights else None
+        min_width = min(widths) if widths else None
+        max_width = max(widths) if widths else None
+        return min_height, max_height, min_width, max_width
+
     def get_texts_longer_than(self, length):
         long_texts = [item["text"] for item in self.data if len(item["text"]) > length]
         unique_long_texts = set(long_texts)
@@ -76,12 +101,15 @@ def run_config(config):
     missing_chars = ocr_vocab.get_missing_chars()
     full_vocab = ocr_vocab.get_full_vocab()
     max_text_length = ocr_vocab.get_max_text_length()
+    min_height, max_height, min_width, max_width = ocr_vocab.get_min_max_dimensions()
 
     print(letter_counts_df)
     print("Реальный словарь:", real_vocab)
     print("Отсутствующие символы:", missing_chars)
     print("Полный словарь:", full_vocab)
     print("Максимальная длина текста:", max_text_length)
+    print(f"Минимальная высота: {min_height}, Максимальная высота: {max_height}")
+    print(f"Минимальная ширина: {min_width}, Максимальная ширина: {max_width}")
 
     if config.max_length is not None:
         unique_long_texts, count = ocr_vocab.get_texts_longer_than(config.max_length)

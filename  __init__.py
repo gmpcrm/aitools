@@ -13,3 +13,5 @@ from .extract_features import run, run_config
 from .calculate_features import run, run_config
 from .create_ocr_dataset import run, run_config
 from .detect_tesseract import run, run_config
+from .create_ocr_synth import run, run_config
+from .train_ocr import run, run_config

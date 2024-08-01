@@ -21,7 +21,7 @@ class Config:
         source_files,
         log_dir="logs",
         vocabulary="-0127436LPN.СГОВПХТE58ROXл:B _C9ASTIVР",
-        cosine_decay=False,
+        cosine_decay=True,
         cosine_decay_warmup_target=1e-4,
         cosine_decay_alpha=1e-12,
         cosine_decay_warmup_epochs=0,
@@ -32,9 +32,9 @@ class Config:
         cosine_decay_restarts_m_mul=0.7,
         cosine_decay_restarts_alpha=1e-10,
         save_best_only_check_point=True,
-        epochs=11,
-        batch_size=240,
-        max_text_size=13,
+        epochs=300,
+        batch_size=128,
+        max_text_size=9,
         device="0",
         shape="200,50,3",
     ):
@@ -76,7 +76,7 @@ class TrainModel:
             max_text_size=config.max_text_size,
             batch_size=config.batch_size,
             split=80 / 10,
-            shuffle=True,
+            shuffle=False,
             augmentation=False,
         )
         self.val_dl = DataLoader(
@@ -91,9 +91,8 @@ class TrainModel:
         )
 
         self.model = self.build_model()
-        # self.lr_scheduler = self.init_lr_scheduler()
-        # self.opt = tf.keras.optimizers.Adam(self.lr_scheduler)
-        self.opt = tf.keras.optimizers.Adam()
+        self.lr_scheduler = self.init_lr_scheduler()
+        self.opt = tf.keras.optimizers.Adam(self.lr_scheduler)
 
         self.model.compile(
             optimizer=self.opt,
@@ -268,7 +267,7 @@ class Imgs_recognized(tf.keras.metrics.Metric):
         )
 
         res_in_batch_bool = tf.logical_not(
-            tf.equal(y_true, y_pred_decode[:, :13])
+            tf.equal(y_true, y_pred_decode[:, :9])
         )  # Здесь True это правильно распознанные символы
         res_in_batch_num = tf.cast(
             res_in_batch_bool, tf.int32
@@ -317,7 +316,7 @@ class Symbols_recognized(tf.keras.metrics.Metric):
         )
 
         res_in_batch_bool = tf.logical_not(
-            tf.equal(y_true, y_pred_decode[:, :13])
+            tf.equal(y_true, y_pred_decode[:, :9])
         )  # True - правильно распознанные символы
         res_in_batch_num = tf.cast(
             res_in_batch_bool, tf.int32
@@ -350,16 +349,8 @@ def run_config(config):
 
 def main():
     base = "c:/proplex"
-    source_files = [
-        f"{base}/label/ocr.json",
-        f"{base}/label1/ocr.json",
-        f"{base}/label2/ocr.json",
-        f"{base}/label3/ocr.json",
-        f"{base}/label4/ocr.json",
-    ]
-
+    source_files = [f"{base}/synt/ocr.json"]
     log_dir = f"{base}/logs"
-
     config = Config(source_files=source_files, log_dir=log_dir)
     parser = argparse.ArgumentParser(description="Утилита для обучения модели OCR")
 

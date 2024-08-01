@@ -11,9 +11,9 @@ class DataLoader(tf.keras.utils.Sequence):
     def __init__(
         self,
         source_files,
-        im_size=[200, 100, 3],
-        batch_size=16,
-        max_text_size=13,
+        im_size=[200, 50, 3],
+        batch_size=64,
+        max_text_size=9,
         split=80,
         shuffle=True,
         augmentation=False,
@@ -90,9 +90,24 @@ class DataLoader(tf.keras.utils.Sequence):
             p=1,
         )
 
+    def pad_image(self, image, target_size=(200, 50), pad_color=(128, 128, 128)):
+        h, w = image.shape[:2]
+
+        # Добавление padding только если размеры меньше целевого
+        top = (target_size[1] - h) // 2 if h < target_size[1] else 0
+        bottom = (target_size[1] - h - top) if h < target_size[1] else 0
+        left = (target_size[0] - w) // 2 if w < target_size[0] else 0
+        right = (target_size[0] - w - left) if w < target_size[0] else 0
+
+        new_image = cv2.copyMakeBorder(
+            image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=pad_color
+        )
+        return new_image
+
     def __getsample__(self, idx):
         example = self.dataset[idx]
         img = cv2.imread(str(example["path_img"]))
+        img = self.pad_image(img, (self.im_size[1], self.im_size[0]))
         img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
         img = cv2.resize(img, (self.im_size[1], self.im_size[0]))
 

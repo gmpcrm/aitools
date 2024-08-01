@@ -15,6 +15,8 @@ class Config:
         max_height=None,
         min_width=None,
         max_width=None,
+        width_file="width_histogram.png",
+        height_file="height_histogram.png",
     ):
         self.source_folder = source_folder
         self.target_folder = target_folder
@@ -22,6 +24,8 @@ class Config:
         self.max_height = max_height
         self.min_width = min_width
         self.max_width = max_width
+        self.width_file = width_file
+        self.height_file = height_file
 
 
 class SortImages:
@@ -96,18 +100,18 @@ class SortImages:
             "Гистограмма ширины изображений",
             "Ширина (пиксели)",
             "Частота",
-            "width_histogram.png",
+            self.config.width_file,
         )
         self.plot_histogram(
             heights,
             "Гистограмма высоты изображений",
             "Высота (пиксели)",
             "Частота",
-            "height_histogram.png",
+            self.config.height_file,
         )
 
         print(
-            "Гистограммы сохранены как 'width_histogram.png' и 'height_histogram.png'"
+            f"Гистограммы сохранены как '{self.config.width_file}' и '{self.config.height_file}'"
         )
 
 
@@ -163,6 +167,18 @@ if __name__ == "__main__":
         type=int,
         default=config.max_width,
         help="Максимальная ширина изображений для перемещения",
+    )
+    parser.add_argument(
+        "--width_file",
+        type=str,
+        default=config.width_file,
+        help="Имя файла для сохранения гистограммы ширины",
+    )
+    parser.add_argument(
+        "--height_file",
+        type=str,
+        default=config.height_file,
+        help="Имя файла для сохранения гистограммы высоты",
     )
     args = parser.parse_args()
     config.__dict__.update(vars(args))
