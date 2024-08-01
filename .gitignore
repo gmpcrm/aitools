@@ -24,3 +24,6 @@ train_ocr copy.py
 
 ocr_test1.py
 create_ocr_synth copy.py
+new_image.png
+original_image.png
+train_image.png

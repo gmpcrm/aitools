@@ -3,16 +3,11 @@ from datetime import datetime
 import numpy as np
 import argparse
 
-from .dataloader_ocr import DataLoader
+from dataloader_ocr import DataLoader
 import tensorflow as tf
 
 print(f"TensorFlow version: {tf.__version__}")
 # tf.config.run_functions_eagerly(True)
-
-
-@tf.function
-def get_variable_value(variable):
-    return variable
 
 
 class Config:
@@ -348,7 +343,7 @@ def run_config(config):
 
 
 def main():
-    base = "c:/proplex"
+    base = "/content"
     source_files = [f"{base}/synt/ocr.json"]
     log_dir = f"{base}/logs"
     config = Config(source_files=source_files, log_dir=log_dir)

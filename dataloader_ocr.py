@@ -1,3 +1,4 @@
+from matplotlib import pyplot as plt
 import tensorflow as tf
 import albumentations as A
 from pathlib import Path
@@ -90,26 +91,45 @@ class DataLoader(tf.keras.utils.Sequence):
             p=1,
         )
 
-    def pad_image(self, image, target_size=(200, 50), pad_color=(128, 128, 128)):
+    def pad_image(self, image, target_size=(200, 50), pad_color=(181, 181, 181)):
         h, w = image.shape[:2]
 
-        # Добавление padding только если размеры меньше целевого
-        top = (target_size[1] - h) // 2 if h < target_size[1] else 0
-        bottom = (target_size[1] - h - top) if h < target_size[1] else 0
-        left = (target_size[0] - w) // 2 if w < target_size[0] else 0
-        right = (target_size[0] - w - left) if w < target_size[0] else 0
+        # Проверка, если текущая высота меньше целевой высоты, добавляем паддинги сверху и снизу
+        if h < target_size[1]:
+            top = (target_size[1] - h) // 2
+            bottom = target_size[1] - h - top
+        else:
+            top = 0
+            bottom = 0
+
+        # Проверка, если текущая ширина меньше целевой ширины, добавляем паддинг справа
+        if w < target_size[0]:
+            left = 0
+            right = target_size[0] - w
+        else:
+            left = 0
+            right = 0
 
         new_image = cv2.copyMakeBorder(
             image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=pad_color
         )
+
+        # Обрезка до целевого размера, если изображение превышает его
+        new_image = new_image[: target_size[1], : target_size[0]]
+
+        # plt.imsave("original_image.png", cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
+        # plt.imsave("new_image.png", cv2.cvtColor(new_image, cv2.COLOR_BGR2RGB))
+
         return new_image
 
     def __getsample__(self, idx):
         example = self.dataset[idx]
         img = cv2.imread(str(example["path_img"]))
-        img = self.pad_image(img, (self.im_size[1], self.im_size[0]))
+        img = self.pad_image(img, (self.im_size[0], self.im_size[1]))
         img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
         img = cv2.resize(img, (self.im_size[1], self.im_size[0]))
+
+        # plt.imsave("train_image.png", cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
         if self.augmentation:
             img = self.aug_gaussian_noise(image=img)["image"]
@@ -155,11 +175,7 @@ class DataLoader(tf.keras.utils.Sequence):
 
 def main():
     source_files = [
-        Path("c:/proplex/label/ocr.json"),
-        Path("c:/proplex/label1/ocr.json"),
-        Path("c:/proplex/label2/ocr.json"),
-        Path("c:/proplex/label3/ocr.json"),
-        Path("c:/proplex/label4/ocr.json"),
+        Path("/content/synt/ocr.json"),
     ]
 
     print()
