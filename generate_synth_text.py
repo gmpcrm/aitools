@@ -15,6 +15,7 @@ class Config:
         fonts=["arial.ttf"],
         height=50,
         width=100,
+        text_size=40,
         json_file=None,
         background_color="white",
         text_color="black",
@@ -31,6 +32,7 @@ class Config:
         self.fonts = fonts
         self.height = height
         self.width = width
+        self.text_size = text_size
         self.json_file = json_file
         self.background_color = background_color
         self.text_color = text_color
@@ -69,7 +71,7 @@ class TimeImageGenerator:
             self.config.text_color, self.config.text_color_offset
         )
         font_path = random.choice(self.config.fonts)
-        font = ImageFont.truetype(font_path, self.config.height - 10)
+        font = ImageFont.truetype(font_path, self.config.text_size)
 
         image = Image.new(
             "RGB",
@@ -78,14 +80,13 @@ class TimeImageGenerator:
         )
         draw = ImageDraw.Draw(image)
 
-        bbox = draw.textbbox((0, 0), text, font=font)
         text_x = 0
         text_y = 0
 
         if self.config.x_offset != 0:
-            text_x = random.randint(0, self.config.x_offset)
+            text_x += random.randint(0, self.config.x_offset)
         if self.config.y_offset != 0:
-            text_y = random.randint(0, self.config.y_offset)
+            text_y += random.randint(0, self.config.y_offset)
 
         draw.text(
             (text_x, text_y),
@@ -133,13 +134,14 @@ class TimeImageGenerator:
         end_date = datetime.strptime(self.config.end_date, "%d.%m.%Y")
         total_days = (end_date - start_date).days + 1
 
-        with tqdm(total=total_days, desc="Generating date images") as pbar:
+        with tqdm(total=total_days * 2, desc="Generating date images") as pbar:
             for single_date in (start_date + timedelta(n) for n in range(total_days)):
-                date_str = single_date.strftime("%d%m%Y")
-                image, angle = self.generate_image(date_str)
-                file_name = f"date_{date_str}.png"
-                self.save_image(image, file_name, date_str, angle)
-                pbar.update(1)
+                for date_format in ["%d.%m.%Y", "%d%m%Y"]:
+                    date_str = single_date.strftime(date_format)
+                    image, angle = self.generate_image(date_str)
+                    file_name = f"date_{date_str}.png"
+                    self.save_image(image, file_name, date_str, angle)
+                    pbar.update(1)
 
         if self.config.json_file:
             with open(self.config.json_file, "w", encoding="utf-8") as json_file:
@@ -166,21 +168,22 @@ def run_config(config):
 
 def main():
     config = Config()
-    config.target_folder = "/content/synt/ocr"
+    config.target_folder = "/content/synth/ocr"
     config.fonts = [
         "/content/fonts/Fira Sans Regular.ttf",
         "/content/fonts/Fira Sans Light.ttf",
         "/content/fonts/Fira Sans Thin.ttf",
         "/content/fonts/Fira Sans Condensed Thin.ttf",
     ]
-    config.json_file = "/content/synt/ocr.json"
-    config.height = 50
-    config.width = 200
+    config.json_file = "/content/synth/ocr.json"
+    config.height = 300
+    config.width = 400
+    config.text_size = 40
     config.background_color = "rgb(181, 181, 181)"
     config.text_color = "rgb(139, 139, 139)"
     config.angle = 0.7
-    config.x_offset = 7
-    config.y_offset = 5
+    config.x_offset = 100
+    config.y_offset = 100
     config.count = 5
     config.start_date = "01.01.2024"
     config.end_date = "31.12.2030"
@@ -213,6 +216,12 @@ def main():
         type=int,
         default=config.width,
         help="Ширина выходного изображения в пикселях",
+    )
+    parser.add_argument(
+        "--text_size",
+        type=int,
+        default=config.text_size,
+        help="Размер текста в изображении",
     )
     parser.add_argument(
         "--json_file",

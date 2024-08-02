@@ -125,6 +125,7 @@ def main():
     config = Config()
     base = "c:/proplex"
     source_files = [
+        f"{base}/synth/ocr.json",
         f"{base}/label/ocr.json",
         f"{base}/label1/ocr.json",
         f"{base}/label2/ocr.json",

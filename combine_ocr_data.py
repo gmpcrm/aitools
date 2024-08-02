@@ -79,7 +79,7 @@ def main():
     config = Config()
     base = "c:/proplex"
     config.source_files = [
-        f"/content/synt/ocr.json",
+        f"{base}/synth/ocr.json",
         f"{base}/label/ocr.json",
         f"{base}/label1/ocr.json",
         f"{base}/label2/ocr.json",

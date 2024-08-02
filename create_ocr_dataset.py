@@ -56,7 +56,9 @@ def run_config(config):
 
 def main():
     config = Config()
-    parser = argparse.ArgumentParser(description="Утилита для обработки OCR данных")
+    parser = argparse.ArgumentParser(
+        description="Утилита для создания датасета для OCR"
+    )
 
     parser.add_argument(
         "--source_folder",

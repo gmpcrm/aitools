@@ -125,7 +125,7 @@ class DataLoader(tf.keras.utils.Sequence):
     def __getsample__(self, idx):
         example = self.dataset[idx]
         img = cv2.imread(str(example["path_img"]))
-        img = self.pad_image(img, (self.im_size[0], self.im_size[1]))
+        # img = self.pad_image(img, (self.im_size[0], self.im_size[1]))
         img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
         img = cv2.resize(img, (self.im_size[1], self.im_size[0]))
 

@@ -229,9 +229,9 @@ class TrainModel:
             verbose=2,
             epochs=self.config.epochs,
             callbacks=[tensorboard_cbk, check_point_cbk],
-            # max_queue_size=512,
-            # workers=8,
-            # use_multiprocessing=True,
+            max_queue_size=512,
+            workers=8,
+            use_multiprocessing=True,
         )
 
 
