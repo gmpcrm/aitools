@@ -383,9 +383,9 @@ for base in ["synth", "label", "label1", "label2", "label3", "label4"]:
 
     df, replaced = extract_text_statistics(source_folder, replace)
     move_invalid_json_files(source_folder, invalid_json_folder)
-    move_invalid_png_files(source_folder, invalid_png_folder, max_length=10)
+    move_invalid_png_files(source_folder, invalid_png_folder, max_length=9)
     move_invalid_json_files(source_folder, invalid_json_folder)
-    move_invalid_png_files(source_folder, invalid_png_folder, max_length=10)
+    move_invalid_png_files(source_folder, invalid_png_folder, max_length=9)
 
     df, replaced = extract_text_statistics(source_folder, replace)
     print(df.to_string(index=False))

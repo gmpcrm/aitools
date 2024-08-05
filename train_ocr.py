@@ -30,7 +30,7 @@ class Config:
         save_best_only_check_point=True,
         epochs=300,
         batch_size=128,
-        max_text_size=10,
+        max_text_size=9,
         device="0",
         shape="200,50,3",
     ):
@@ -278,7 +278,7 @@ class Imgs_recognized(tf.keras.metrics.Metric):
         )
 
         res_in_batch_bool = tf.logical_not(
-            tf.equal(y_true, y_pred_decode[:, :10])
+            tf.equal(y_true, y_pred_decode[:, :9])
         )  # Здесь True это правильно распознанные символы
         res_in_batch_num = tf.cast(
             res_in_batch_bool, tf.int32
@@ -327,7 +327,7 @@ class Symbols_recognized(tf.keras.metrics.Metric):
         )
 
         res_in_batch_bool = tf.logical_not(
-            tf.equal(y_true, y_pred_decode[:, :10])
+            tf.equal(y_true, y_pred_decode[:, :9])
         )  # True - правильно распознанные символы
         res_in_batch_num = tf.cast(
             res_in_batch_bool, tf.int32

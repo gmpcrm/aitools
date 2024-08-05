@@ -14,7 +14,7 @@ class DataLoader(tf.keras.utils.Sequence):
         source_files,
         im_size=[200, 50, 3],
         batch_size=64,
-        max_text_size=10,
+        max_text_size=9,
         split=80,
         shuffle=True,
         augmentation=False,
@@ -90,47 +90,6 @@ class DataLoader(tf.keras.utils.Sequence):
             ],
             p=1,
         )
-
-    def get_dominant_color(self, image):
-        pixels = np.float32(image.reshape(-1, 3))
-
-        k = 1
-        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
-        _, labels, palette = cv2.kmeans(
-            pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS
-        )
-
-        _, counts = np.unique(labels, return_counts=True)
-        dominant_color = palette[np.argmax(counts)]
-
-        return tuple(map(int, dominant_color))
-
-    def preprocess_image(self, image, target_size=(200, 50)):
-        old_size = image.shape[:2]  # (height, width)
-
-        if old_size[0] > target_size[1] or old_size[1] > target_size[0]:
-            ratio = min(target_size[1] / old_size[0], target_size[0] / old_size[1])
-            new_size = (
-                int(old_size[1] * ratio),
-                int(old_size[0] * ratio),
-            )  # (width, height)
-            image = cv2.resize(image, (new_size[0], new_size[1]))
-            old_size = image.shape[:2]
-
-        pad_color = self.get_dominant_color(image)
-
-        new_image = np.full(
-            (target_size[1], target_size[0], 3), pad_color, dtype=np.uint8
-        )
-
-        y_offset = (target_size[1] - old_size[0]) // 2
-        x_offset = (target_size[0] - old_size[1]) // 2
-
-        new_image[
-            y_offset : y_offset + old_size[0], x_offset : x_offset + old_size[1]
-        ] = image
-
-        return new_image
 
     def __getsample__(self, idx):
         example = self.dataset[idx]
