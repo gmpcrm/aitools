@@ -5,6 +5,14 @@ import json
 import pandas as pd
 from collections import defaultdict
 
+vocab = "-0127436LNP.ВХПСГОТ58лOER-X: B_9CTASIVР"
+
+chars = {
+    ",": ".",
+    "*": ".",
+    "/": "7",
+}
+
 
 def move_invalid_json_files(source_folder, invalid_json_folder):
     """
@@ -31,6 +39,11 @@ def move_invalid_json_files(source_folder, invalid_json_folder):
                     os.path.join(source_folder, json_file),
                     os.path.join(invalid_json_folder, json_file),
                 )
+
+
+def find_missing_chars(text, vocab):
+    missing_chars = [c for c in text if c not in vocab]
+    return missing_chars
 
 
 def move_invalid_png_files(source_folder, invalid_png_folder, max_length=13):
@@ -65,6 +78,16 @@ def move_invalid_png_files(source_folder, invalid_png_folder, max_length=13):
                                 shutil.move(
                                     png_path, os.path.join(invalid_png_folder, png_file)
                                 )
+
+                        missing_chars = find_missing_chars(text, vocab)
+                        if missing_chars:
+                            print(
+                                f"Перемещение файла {png_file} в папку {invalid_png_folder} из-за наличия недопустимых символов: {missing_chars}"
+                            )
+                            shutil.move(
+                                png_path, os.path.join(invalid_png_folder, png_file)
+                            )
+
                 except json.JSONDecodeError:
                     print(f"Ошибка декодирования JSON в файле: {json_file}")
                 except Exception as e:
@@ -107,6 +130,12 @@ def extract_text_statistics(json_folder, replace_dict):
                         if new_text != text:
                             item["text"] = new_text
                             modified = True
+                        else:
+                            new_text = "".join(chars.get(char, char) for char in text)
+                            if new_text != text:
+                                item["text"] = new_text
+                                modified = True
+
                         bbox = item.get("bbox", [0, 0, 0, 0])
                         label_counts[new_text] += 1
                         width = bbox[2] - bbox[0]
@@ -345,16 +374,18 @@ replace = {
 }
 
 for base in ["synth", "label", "label1", "label2", "label3", "label4"]:
+    # for base in ["synth"]:
     source_folder = f"c:/proplex/{base}/ocr"
 
     # Перемещаем невалидные JSON и PNG-файлы
     invalid_json_folder = f"c:/proplex/{base}/ocr.json.removed"
     invalid_png_folder = f"c:/proplex/{base}/ocr.png.removed"
 
+    df, replaced = extract_text_statistics(source_folder, replace)
     move_invalid_json_files(source_folder, invalid_json_folder)
-    move_invalid_png_files(source_folder, invalid_png_folder, max_length=9)
+    move_invalid_png_files(source_folder, invalid_png_folder, max_length=10)
     move_invalid_json_files(source_folder, invalid_json_folder)
-    move_invalid_png_files(source_folder, invalid_png_folder, max_length=9)
+    move_invalid_png_files(source_folder, invalid_png_folder, max_length=10)
 
     df, replaced = extract_text_statistics(source_folder, replace)
     print(df.to_string(index=False))

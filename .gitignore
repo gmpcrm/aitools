@@ -27,3 +27,6 @@ create_ocr_synth copy.py
 new_image.png
 original_image.png
 train_image.png
+preprocess_image.png
+augment_image.png
+source_image.png

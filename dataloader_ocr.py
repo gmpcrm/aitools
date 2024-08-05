@@ -86,39 +86,49 @@ class DataLoader(tf.keras.utils.Sequence):
                     always_apply=False,
                     p=0.6,
                 ),
-                A.Rotate(limit=(-5, 5)),
+                A.Rotate(limit=(-0.7, 0.7)),
             ],
             p=1,
         )
 
-    def pad_image(self, image, target_size=(200, 50), pad_color=(181, 181, 181)):
-        h, w = image.shape[:2]
+    def get_dominant_color(self, image):
+        pixels = np.float32(image.reshape(-1, 3))
 
-        # Проверка, если текущая высота меньше целевой высоты, добавляем паддинги сверху и снизу
-        if h < target_size[1]:
-            top = (target_size[1] - h) // 2
-            bottom = target_size[1] - h - top
-        else:
-            top = 0
-            bottom = 0
-
-        # Проверка, если текущая ширина меньше целевой ширины, добавляем паддинг справа
-        if w < target_size[0]:
-            left = 0
-            right = target_size[0] - w
-        else:
-            left = 0
-            right = 0
-
-        new_image = cv2.copyMakeBorder(
-            image, top, bottom, left, right, cv2.BORDER_CONSTANT, value=pad_color
+        k = 1
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
+        _, labels, palette = cv2.kmeans(
+            pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS
         )
 
-        # Обрезка до целевого размера, если изображение превышает его
-        new_image = new_image[: target_size[1], : target_size[0]]
+        _, counts = np.unique(labels, return_counts=True)
+        dominant_color = palette[np.argmax(counts)]
 
-        # plt.imsave("original_image.png", cv2.cvtColor(image, cv2.COLOR_BGR2RGB))
-        # plt.imsave("new_image.png", cv2.cvtColor(new_image, cv2.COLOR_BGR2RGB))
+        return tuple(map(int, dominant_color))
+
+    def preprocess_image(self, image, target_size=(200, 50)):
+        old_size = image.shape[:2]  # (height, width)
+
+        if old_size[0] > target_size[1] or old_size[1] > target_size[0]:
+            ratio = min(target_size[1] / old_size[0], target_size[0] / old_size[1])
+            new_size = (
+                int(old_size[1] * ratio),
+                int(old_size[0] * ratio),
+            )  # (width, height)
+            image = cv2.resize(image, (new_size[0], new_size[1]))
+            old_size = image.shape[:2]
+
+        pad_color = self.get_dominant_color(image)
+
+        new_image = np.full(
+            (target_size[1], target_size[0], 3), pad_color, dtype=np.uint8
+        )
+
+        y_offset = (target_size[1] - old_size[0]) // 2
+        x_offset = (target_size[0] - old_size[1]) // 2
+
+        new_image[
+            y_offset : y_offset + old_size[0], x_offset : x_offset + old_size[1]
+        ] = image
 
         return new_image
 
@@ -126,13 +136,16 @@ class DataLoader(tf.keras.utils.Sequence):
         example = self.dataset[idx]
         img = cv2.imread(str(example["path_img"]))
         # img = self.pad_image(img, (self.im_size[0], self.im_size[1]))
+        # plt.imsave("source_image.png", cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
+        img = self.preprocess_image(img, (self.im_size[0], self.im_size[1]))
+        # plt.imsave("preprocess_image.png", cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
         img = cv2.rotate(img, cv2.ROTATE_90_CLOCKWISE)
         img = cv2.resize(img, (self.im_size[1], self.im_size[0]))
-
         # plt.imsave("train_image.png", cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
         if self.augmentation:
             img = self.aug_gaussian_noise(image=img)["image"]
+            # plt.imsave("augment_image.png", cv2.cvtColor(img, cv2.COLOR_BGR2RGB))
 
         return img, example["label"]
 

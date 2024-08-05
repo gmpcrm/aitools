@@ -3,8 +3,9 @@ from datetime import datetime
 import numpy as np
 import argparse
 
-from .dataloader_ocr import DataLoader
 import tensorflow as tf
+from tensorflow.keras.regularizers import l2
+from .dataloader_ocr import DataLoader
 
 print(f"TensorFlow version: {tf.__version__}")
 # tf.config.run_functions_eagerly(True)
@@ -73,7 +74,7 @@ class TrainModel:
             batch_size=config.batch_size,
             split=80,
             shuffle=False,
-            augmentation=False,
+            augmentation=True,
         )
         self.val_dl = DataLoader(
             source_files=config.source_files,
@@ -131,16 +132,25 @@ class TrainModel:
 
         x = tf.keras.layers.Dropout(0.3)(x)
         x = tf.keras.layers.Bidirectional(
-            tf.keras.layers.LSTM(256, return_sequences=True, dropout=0.3),
+            tf.keras.layers.LSTM(
+                256,
+                return_sequences=True,
+                dropout=0.3,
+                recurrent_regularizer=l2(0.01),
+                kernel_regularizer=l2(0.01),
+            ),
             merge_mode="ave",
         )(x)
+
         x = tf.keras.layers.BatchNormalization()(x)
         output = tf.keras.layers.Dense(
             len(self.vocab) + 2,
             activation=tf.keras.layers.LeakyReLU(alpha=0.3),
             kernel_initializer="lecun_normal",
+            kernel_regularizer=l2(0.01),
             name="dense1",
         )(x)
+
         model = tf.keras.models.Model(
             inputs=input_img, outputs=output, name="EfficientNetV2L_ocr_v1"
         )
@@ -229,9 +239,9 @@ class TrainModel:
             verbose=2,
             epochs=self.config.epochs,
             callbacks=[tensorboard_cbk, check_point_cbk],
-            max_queue_size=512,
-            workers=8,
-            use_multiprocessing=True,
+            # max_queue_size=512,
+            # workers=8,
+            # use_multiprocessing=True,
         )
 
 
