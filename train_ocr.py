@@ -4,7 +4,7 @@ import numpy as np
 import argparse
 
 import tensorflow as tf
-from .dataloader_ocr import DataLoader
+from dataloader_ocr import DataLoader
 
 print(f"TensorFlow version: {tf.__version__}")
 # tf.config.run_functions_eagerly(True)
@@ -23,10 +23,10 @@ class Config:
         cosine_decay_warmup_epochs=0,
         cosine_decay_initial_learning_rate=0.0,
         cosine_decay_restarts_initial_learning_rate=1e-4,
-        cosine_decay_restarts_first_decay_epochs=3,
+        cosine_decay_restarts_first_decay_epochs=10,
         cosine_decay_restarts_t_mul=1.5,
         cosine_decay_restarts_m_mul=0.7,
-        cosine_decay_restarts_alpha=1e-10,
+        cosine_decay_restarts_alpha=1e-12,
         save_best_only_check_point=True,
         epochs=300,
         batch_size=128,
@@ -35,6 +35,7 @@ class Config:
         shape="200,50,3",
         dropout=0.5,
         augmentation=False,
+        weights=None,
     ):
         self.source_files = source_files
         self.log_dir = log_dir
@@ -61,6 +62,7 @@ class Config:
         self.save_best_only_check_point = save_best_only_check_point
         self.dropout = dropout
         self.augmentation = augmentation
+        self.weights = weights
 
 
 class TrainModel:
@@ -91,6 +93,9 @@ class TrainModel:
         )
 
         self.model = self.build_model()
+        if config.weights:
+            self.model.load_weights(config.weights)
+
         self.lr_scheduler = self.init_lr_scheduler()
         self.opt = tf.keras.optimizers.Adam(self.lr_scheduler)
 
@@ -375,9 +380,13 @@ def main():
         f"{base}/label4/ocr.json",
     ]
     log_dir = f"{base}/logs"
+
+    # "g:\My Drive\AIProplex\datasets\010\logs\EfficientNetV2L_ocr_CosineDecay__05_08_2024__21_25_59\checkpoints\best.keras"
+    weights = f"g:/My Drive/AIProplex/datasets/010/logs/EfficientNetV2L_ocr_CosineDecay__05_08_2024__21_25_59/checkpoints/best.keras"
     config = Config(
         source_files=source_files,
         log_dir=log_dir,
+        weights=weights,
         batch_size=64,
         epochs=300,
         cosine_decay=False,

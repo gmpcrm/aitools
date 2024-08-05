@@ -374,7 +374,6 @@ replace = {
 }
 
 for base in ["synth", "label", "label1", "label2", "label3", "label4"]:
-    # for base in ["synth"]:
     source_folder = f"c:/proplex/{base}/ocr"
 
     # Перемещаем невалидные JSON и PNG-файлы
