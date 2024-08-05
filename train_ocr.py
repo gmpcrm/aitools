@@ -234,7 +234,7 @@ class TrainModel:
         )
 
         early_stopping = tf.keras.callbacks.EarlyStopping(
-            monitor="val_loss", patience=10, restore_best_weights=True
+            monitor="val_imgs_recognized", patience=20, restore_best_weights=True
         )
 
         self.model.fit(
