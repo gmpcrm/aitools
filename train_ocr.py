@@ -4,7 +4,6 @@ import numpy as np
 import argparse
 
 import tensorflow as tf
-from tensorflow.keras.regularizers import l2
 from .dataloader_ocr import DataLoader
 
 print(f"TensorFlow version: {tf.__version__}")
@@ -130,14 +129,15 @@ class TrainModel:
                 )(layer.output)
                 break
 
-        x = tf.keras.layers.Dropout(0.3)(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
         x = tf.keras.layers.Bidirectional(
             tf.keras.layers.LSTM(
                 256,
                 return_sequences=True,
-                dropout=0.3,
-                recurrent_regularizer=l2(0.01),
-                kernel_regularizer=l2(0.01),
+                dropout=0.5,
+                recurrent_dropout=0.5,
+                # recurrent_regularizer=l2(0.01),
+                # kernel_regularizer=l2(0.01),
             ),
             merge_mode="ave",
         )(x)
@@ -147,13 +147,14 @@ class TrainModel:
             len(self.vocab) + 2,
             activation=tf.keras.layers.LeakyReLU(alpha=0.3),
             kernel_initializer="lecun_normal",
-            kernel_regularizer=l2(0.01),
+            kernel_regularizer=tf.keras.regularizers.l2(0.01),
             name="dense1",
         )(x)
 
         model = tf.keras.models.Model(
             inputs=input_img, outputs=output, name="EfficientNetV2L_ocr_v1"
         )
+
         return model
 
     def Loss_CTC(self, y_true, y_prediction):
@@ -232,13 +233,17 @@ class TrainModel:
             save_weights_only=False,
         )
 
+        early_stopping = tf.keras.callbacks.EarlyStopping(
+            monitor="val_loss", patience=10, restore_best_weights=True
+        )
+
         self.model.fit(
             self.train_dl,
             validation_data=self.val_dl,
             validation_freq=1,
             verbose=2,
             epochs=self.config.epochs,
-            callbacks=[tensorboard_cbk, check_point_cbk],
+            callbacks=[tensorboard_cbk, check_point_cbk, early_stopping],
             # max_queue_size=512,
             # workers=8,
             # use_multiprocessing=True,
