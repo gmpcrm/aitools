@@ -3,6 +3,8 @@ import json
 import shutil
 import random
 import argparse
+import cv2
+import numpy as np
 from tqdm import tqdm
 
 
@@ -13,11 +15,13 @@ class Config:
         target_folder="/content/ocr",
         target_json="/content/ocr.json",
         shuffle=False,
+        preprocess=True,
     ):
         self.source_files = source_files
         self.target_folder = target_folder
         self.target_json = target_json
         self.shuffle = shuffle
+        self.preprocess = preprocess
 
 
 class JSONProcessor:
@@ -34,6 +38,155 @@ class JSONProcessor:
     def normalize_path(self, path):
         return path.replace("\\", "/")
 
+    def get_dominant_color(self, image):
+        pixels = np.float32(image.reshape(-1, 3))
+
+        k = 1
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
+        _, labels, palette = cv2.kmeans(
+            pixels, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS
+        )
+
+        _, counts = np.unique(labels, return_counts=True)
+        dominant_color = palette[np.argmax(counts)]
+
+        return tuple(map(int, dominant_color))
+
+    def preprocess_image(self, image, target_size=(200, 50)):
+        old_size = image.shape[:2]  # (height, width)
+
+        if old_size[0] > target_size[1] or old_size[1] > target_size[0]:
+            ratio = min(target_size[1] / old_size[0], target_size[0] / old_size[1])
+            new_size = (
+                int(old_size[1] * ratio),
+                int(old_size[0] * ratio),
+            )  # (width, height)
+            image = cv2.resize(image, (new_size[0], new_size[1]))
+            old_size = image.shape[:2]
+
+        pad_color = self.get_dominant_color(image)
+
+        new_image = np.full(
+            (target_size[1], target_size[0], 3), pad_color, dtype=np.uint8
+        )
+
+        y_offset = (target_size[1] - old_size[0]) // 2
+        x_offset = (target_size[0] - old_size[1]) // 2
+
+        new_image[
+            y_offset : y_offset + old_size[0], x_offset : x_offset + old_size[1]
+        ] = image
+
+        return new_image
+
+    def preprocess_image(self, image, target_size=(200, 50), threshold=170):
+        # Преобразовать в градации серого
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        # Найти пиксели, которые ярче порога
+        mask = gray > threshold
+
+        # Вычислить средний цвет оставшихся пикселей
+        if np.any(mask):
+            mean_color = cv2.mean(image, mask.astype(np.uint8))[:3]
+            pad_color = (int(mean_color[0]), int(mean_color[1]), int(mean_color[2]))
+        else:
+            pad_color = (181, 181, 181)  # дефолтный цвет
+
+        # Получить размеры исходного изображения
+        old_size = image.shape[:2]  # (height, width)
+
+        # Проверить, если изображение больше целевого размера, изменить его размер с сохранением пропорций
+        if old_size[0] > target_size[1] or old_size[1] > target_size[0]:
+            ratio = min(target_size[1] / old_size[0], target_size[0] / old_size[1])
+            new_size = (
+                int(old_size[1] * ratio),
+                int(old_size[0] * ratio),
+            )  # (width, height)
+            image = cv2.resize(image, (new_size[0], new_size[1]))
+            old_size = image.shape[:2]  # обновить размеры после изменения размера
+
+        # Создать новое изображение с целевым размером и фоновым цветом
+        new_image = np.full(
+            (target_size[1], target_size[0], 3), pad_color, dtype=np.uint8
+        )
+
+        # Рассчитать смещение для центрирования изображения
+        y_offset = (target_size[1] - old_size[0]) // 2
+        x_offset = (target_size[0] - old_size[1]) // 2
+
+        # Вставить исходное изображение в центр нового изображения
+        new_image[
+            y_offset : y_offset + old_size[0], x_offset : x_offset + old_size[1]
+        ] = image
+
+        return new_image
+
+    def preprocess_image(self, image, target_size=(200, 50), threshold=170):
+        # Преобразовать в градации серого
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+        # Найти пиксели, которые ярче порога
+        mask = gray > threshold
+
+        # Вычислить средний цвет топ 20% самых светлых пикселей
+        if np.any(mask):
+            bright_pixels = image[mask]
+            bright_pixels = bright_pixels.reshape(-1, 3)
+
+            # Сортируем пиксели по яркости
+            brightness = np.mean(bright_pixels, axis=1)
+            sorted_indices = np.argsort(brightness)[
+                ::-1
+            ]  # от самого светлого к самому темному
+
+            # Берем топ 20% самых светлых пикселей
+            top_20_percent = bright_pixels[
+                sorted_indices[: max(1, int(0.15 * len(sorted_indices)))]
+            ]
+
+            # Вычисляем средний цвет
+            mean_color = np.mean(top_20_percent, axis=0)
+            if np.isnan(mean_color).any():
+                pad_color = (
+                    181,
+                    181,
+                    181,
+                )  # дефолтный цвет, если вычисление среднего цвета не удалось
+            else:
+                pad_color = (int(mean_color[0]), int(mean_color[1]), int(mean_color[2]))
+        else:
+            pad_color = (181, 181, 181)  # дефолтный цвет
+
+        # Получить размеры исходного изображения
+        old_size = image.shape[:2]  # (height, width)
+
+        # Проверить, если изображение больше целевого размера, изменить его размер с сохранением пропорций
+        if old_size[0] > target_size[1] or old_size[1] > target_size[0]:
+            ratio = min(target_size[1] / old_size[0], target_size[0] / old_size[1])
+            new_size = (
+                int(old_size[1] * ratio),
+                int(old_size[0] * ratio),
+            )  # (width, height)
+            image = cv2.resize(image, (new_size[0], new_size[1]))
+            old_size = image.shape[:2]  # обновить размеры после изменения размера
+
+        # Создать новое изображение с целевым размером и фоновым цветом
+        new_image = np.full(
+            (target_size[1], target_size[0], 3), pad_color, dtype=np.uint8
+        )
+
+        # Рассчитать смещение для центрирования изображения
+        y_offset = (target_size[1] - old_size[0]) // 2
+        x_offset = (target_size[0] - old_size[1]) // 2
+
+        # Вставить исходное изображение в центр нового изображения
+        new_image[
+            y_offset : y_offset + old_size[0], x_offset : x_offset + old_size[1]
+        ] = image
+
+        return new_image
+
     def copy_files_and_update_paths(self, data):
         if not os.path.exists(self.config.target_folder):
             os.makedirs(self.config.target_folder)
@@ -44,7 +197,13 @@ class JSONProcessor:
             target_file_path = os.path.join(self.config.target_folder, filename)
             target_file_path = self.normalize_path(target_file_path)
 
-            shutil.copy(source_file_path, target_file_path)
+            if self.config.preprocess:
+                image = cv2.imread(source_file_path)
+                image = self.preprocess_image(image)
+                cv2.imwrite(target_file_path, image)
+            else:
+                shutil.copy(source_file_path, target_file_path)
+
             entry["file"] = target_file_path
 
         return data
