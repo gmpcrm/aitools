@@ -16,7 +16,7 @@ class Config:
         self,
         source_files,
         log_dir="logs",
-        vocabulary="-012.LN436785ВПХPл9-СГОТEO:RXB_ CTASIVРР",
+        vocabulary="-012.LN436785ВПХPл9-СГОТEO:RXB_ CTASIVР",
         cosine_decay=True,
         cosine_decay_warmup_target=1e-4,
         cosine_decay_alpha=1e-12,
