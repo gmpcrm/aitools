@@ -77,7 +77,7 @@ class TrainModel:
             batch_size=config.batch_size,
             split=80,
             shuffle=False,
-            augmentation=self.config.autmentation,
+            augmentation=self.config.augmentation,
         )
         self.val_dl = DataLoader(
             source_files=config.source_files,
