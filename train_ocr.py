@@ -33,6 +33,8 @@ class Config:
         max_text_size=9,
         device="0",
         shape="200,50,3",
+        dropout=0.5,
+        augmentation=False,
     ):
         self.source_files = source_files
         self.log_dir = log_dir
@@ -57,6 +59,8 @@ class Config:
         self.max_text_size = max_text_size
         self.shape = shape
         self.save_best_only_check_point = save_best_only_check_point
+        self.dropout = dropout
+        self.augmentation = augmentation
 
 
 class TrainModel:
@@ -73,7 +77,7 @@ class TrainModel:
             batch_size=config.batch_size,
             split=80,
             shuffle=False,
-            augmentation=True,
+            augmentation=self.config.autmentation,
         )
         self.val_dl = DataLoader(
             source_files=config.source_files,
@@ -129,13 +133,13 @@ class TrainModel:
                 )(layer.output)
                 break
 
-        x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dropout(self.config.dropout)(x)
         x = tf.keras.layers.Bidirectional(
             tf.keras.layers.LSTM(
                 256,
                 return_sequences=True,
-                dropout=0.5,
-                recurrent_dropout=0.5,
+                dropout=self.config.dropout,
+                # recurrent_dropout=0.5,
                 # recurrent_regularizer=l2(0.01),
                 # kernel_regularizer=l2(0.01),
             ),
@@ -147,7 +151,7 @@ class TrainModel:
             len(self.vocab) + 2,
             activation=tf.keras.layers.LeakyReLU(alpha=0.3),
             kernel_initializer="lecun_normal",
-            kernel_regularizer=tf.keras.regularizers.l2(0.01),
+            # kernel_regularizer=tf.keras.regularizers.l2(0.01),
             name="dense1",
         )(x)
 
