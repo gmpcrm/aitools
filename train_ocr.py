@@ -276,7 +276,7 @@ class Imgs_recognized(tf.keras.metrics.Metric):
         y_pred_decode_st = tf.nn.ctc_greedy_decoder(
             inputs=tf.transpose(y_pred, perm=[1, 0, 2]),
             sequence_length=seq_length,
-            merge_repeated=True,
+            merge_repeated=False,
             blank_index=1,
         )[0][0]
         st = tf.SparseTensor(
@@ -325,7 +325,7 @@ class Symbols_recognized(tf.keras.metrics.Metric):
         y_pred_decode_st = tf.nn.ctc_greedy_decoder(
             inputs=tf.transpose(y_pred, perm=[1, 0, 2]),
             sequence_length=seq_length,
-            merge_repeated=True,
+            merge_repeated=False,
             blank_index=1,
         )[0][0]
         st = tf.SparseTensor(
