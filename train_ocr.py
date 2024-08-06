@@ -203,7 +203,7 @@ class TrainModel:
                     * self.config.cosine_decay_warmup_epochs,
                     steps_per_epoch=len(self.train_dl),
                     total_epochs=self.config.epochs,
-                    decay_power=self.config.decay_power,
+                    decay_power=self.config.cosine_decay_power,
                 )
 
             else:
