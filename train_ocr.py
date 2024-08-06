@@ -4,7 +4,7 @@ import numpy as np
 import argparse
 
 import tensorflow as tf
-from dataloader_ocr import DataLoader
+from .dataloader_ocr import DataLoader
 
 print(f"TensorFlow version: {tf.__version__}")
 # tf.config.run_functions_eagerly(True)
@@ -381,7 +381,6 @@ def main():
     ]
     log_dir = f"{base}/logs"
 
-    # "g:\My Drive\AIProplex\datasets\010\logs\EfficientNetV2L_ocr_CosineDecay__05_08_2024__21_25_59\checkpoints\best.keras"
     weights = f"g:/My Drive/AIProplex/datasets/010/logs/EfficientNetV2L_ocr_CosineDecay__05_08_2024__21_25_59/checkpoints/best.keras"
     config = Config(
         source_files=source_files,

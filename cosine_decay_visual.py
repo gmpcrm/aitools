@@ -1,56 +1,44 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Параметры
-epochs = 300
-total_images = 10000
-batch_size = 300
-steps_per_epoch = total_images // batch_size
-total_steps = epochs * steps_per_epoch
-
-initial_learning_rate = 1e-3
-t_mul = 1.5
-m_mul = 0.7
-alpha = 1e-6
-first_decay_epochs = 3
-first_decay_steps = steps_per_epoch * first_decay_epochs
-
-global_step = np.arange(total_steps)
-learning_rate = np.zeros_like(global_step, dtype=np.float32)
+initial_learning_rate = 1e-4
+first_decay_steps = 10 * 181  # 10 эпох по 181 шагу в каждой
+t_mul = 0.97  # 1.5
+m_mul = 0.92  # 0.7
+alpha = 1e-12
+total_steps = 181 * 300  # Общее количество шагов для визуализации
 
 
+# Функция для вычисления значения cosine decay restarts
 def cosine_decay_restarts(
-    global_step, initial_learning_rate, first_decay_steps, t_mul, m_mul, alpha
+    step, initial_learning_rate, first_decay_steps, t_mul, m_mul, alpha
 ):
-    completed_fraction = global_step / first_decay_steps
-    i_restart = 0
-    while completed_fraction >= (t_mul**i_restart):
-        i_restart += 1
-    completed_fraction = (
-        completed_fraction / (t_mul ** (i_restart - 1))
-        if i_restart > 0
-        else completed_fraction
+    completed_fraction = step / first_decay_steps
+    i_restart = np.floor(np.log(1 - completed_fraction * (1 - t_mul)) / np.log(t_mul))
+    sum_r = (1 - t_mul**i_restart) / (1 - t_mul)
+    completed_fraction = (step - first_decay_steps * sum_r) / (
+        first_decay_steps * t_mul**i_restart
     )
-
-    cosine_decay = 0.5 * (1 + np.cos(np.pi * completed_fraction))
-    decayed_learning_rate = (
-        initial_learning_rate * (m_mul**i_restart) - alpha
-    ) * cosine_decay + alpha
-
+    cosine_decayed = 0.5 * (1 + np.cos(np.pi * completed_fraction))
+    decayed = (1 - alpha) * cosine_decayed + alpha
+    decayed_learning_rate = initial_learning_rate * m_mul**i_restart * decayed
     return decayed_learning_rate
 
 
-for step in range(total_steps):
-    learning_rate[step] = cosine_decay_restarts(
+# Генерация значений скорости обучения для каждого шага
+learning_rates = [
+    cosine_decay_restarts(
         step, initial_learning_rate, first_decay_steps, t_mul, m_mul, alpha
     )
+    for step in range(total_steps)
+]
 
 # Построение графика
 plt.figure(figsize=(10, 6))
-plt.plot(global_step, learning_rate, label="Learning Rate")
-plt.xlabel("Global Step")
+plt.plot(learning_rates)
+plt.xlabel("Steps")
 plt.ylabel("Learning Rate")
-plt.title("Learning Rate Schedule with Cosine Decay Restarts")
-plt.legend()
+plt.title("Cosine Decay Restarts Learning Rate Schedule")
 plt.grid(True)
 plt.show()
