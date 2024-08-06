@@ -18,10 +18,12 @@ class Config:
         log_dir="logs",
         vocabulary="-012.LN436785ВПХPл9-СГОТEO:RXB_ CTASIVР",
         cosine_decay=True,
+        cosine_decay_power=0,
         cosine_decay_warmup_target=1e-4,
         cosine_decay_alpha=1e-12,
         cosine_decay_warmup_epochs=0,
         cosine_decay_initial_learning_rate=0.0,
+        cosine_decay_final_learning_rate=1e-4,
         cosine_decay_restarts_initial_learning_rate=1e-4,
         cosine_decay_restarts_first_decay_epochs=10,
         cosine_decay_restarts_t_mul=1.5,
@@ -41,10 +43,12 @@ class Config:
         self.log_dir = log_dir
         self.vocabulary = vocabulary
         self.cosine_decay = cosine_decay
+        self.cosine_decay_power = cosine_decay_power
         self.cosine_decay_warmup_target = cosine_decay_warmup_target
         self.cosine_decay_alpha = cosine_decay_alpha
         self.cosine_decay_warmup_epochs = cosine_decay_warmup_epochs
         self.cosine_decay_initial_learning_rate = cosine_decay_initial_learning_rate
+        self.cosine_decay_final_learning_rate = cosine_decay_final_learning_rate
         self.cosine_decay_restarts_initial_learning_rate = (
             cosine_decay_restarts_initial_learning_rate
         )
@@ -191,6 +195,17 @@ class TrainModel:
                     decay_steps=len(self.train_dl) * (self.config.epochs),
                     alpha=self.config.cosine_decay_alpha,
                 )
+            elif self.config.cosine_decay_power > 0:
+                return WarmUpCosineDecay(
+                    initial_learning_rate=self.config.cosine_decay_initial_learning_rate,
+                    final_learning_rate=self.config.cosine_decay_final_learning_rate,
+                    warmup_steps=len(self.train_dl)
+                    * self.config.cosine_decay_warmup_epochs,
+                    steps_per_epoch=len(self.train_dl),
+                    total_epochs=self.config.epochs,
+                    decay_power=self.config.decay_power,
+                )
+
             else:
                 return tf.keras.optimizers.schedules.CosineDecay(
                     initial_learning_rate=self.config.cosine_decay_initial_learning_rate,
@@ -355,6 +370,73 @@ class Symbols_recognized(tf.keras.metrics.Metric):
     def reset_state(self):
         self.false_rec_symbols.assign(0)
         self.all_symbols.assign(0)
+
+
+class WarmUpCosineDecay(tf.keras.optimizers.schedules.LearningRateSchedule):
+    def __init__(
+        self,
+        initial_learning_rate=1e-4,
+        final_learning_rate=1e-5,
+        warmup_steps=180 * 5,
+        steps_per_epoch=180,
+        total_epochs=300,
+        decay_power=0.8,
+    ):
+        super(WarmUpCosineDecay, self).__init__()
+        self.initial_learning_rate = initial_learning_rate
+        self.final_learning_rate = final_learning_rate
+        self.warmup_steps = warmup_steps
+        self.steps_per_epoch = steps_per_epoch
+        self.total_epochs = total_epochs
+        self.decay_power = decay_power
+
+    def __call__(self, step):
+        def warmup_phase():
+            return self.initial_learning_rate * (
+                tf.cast(step, tf.float32) / tf.cast(self.warmup_steps, tf.float32)
+            )
+
+        def decay_phase():
+            epoch = (step - self.warmup_steps) // self.steps_per_epoch
+            epoch_step = (step - self.warmup_steps) % self.steps_per_epoch
+            decay_steps = self.steps_per_epoch
+            cosine_decay = 0.5 * (
+                1
+                + tf.cos(
+                    np.pi
+                    * tf.cast(epoch_step, tf.float32)
+                    / tf.cast(decay_steps, tf.float32)
+                )
+            )
+            decayed = (
+                1 - self.final_learning_rate / self.initial_learning_rate
+            ) * cosine_decay + (self.final_learning_rate / self.initial_learning_rate)
+            return (
+                self.initial_learning_rate
+                * decayed
+                * tf.pow(
+                    (
+                        1
+                        - (
+                            tf.cast(epoch, tf.float32)
+                            / tf.cast(self.total_epochs, tf.float32)
+                        )
+                    ),
+                    self.decay_power,
+                )
+            )
+
+        return tf.cond(step < self.warmup_steps, warmup_phase, decay_phase)
+
+    def get_config(self):
+        return {
+            "initial_learning_rate": self.initial_learning_rate,
+            "final_learning_rate": self.final_learning_rate,
+            "warmup_steps": self.warmup_steps,
+            "steps_per_epoch": self.steps_per_epoch,
+            "total_epochs": self.total_epochs,
+            "decay_power": self.decay_power,
+        }
 
 
 def run(**kwargs):
