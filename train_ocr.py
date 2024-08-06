@@ -78,7 +78,7 @@ class TrainModel:
             max_text_size=config.max_text_size,
             batch_size=config.batch_size,
             split=80,
-            shuffle=False,
+            shuffle=True,
             augmentation=self.config.augmentation,
         )
         self.val_dl = DataLoader(
@@ -144,9 +144,6 @@ class TrainModel:
                 256,
                 return_sequences=True,
                 dropout=self.config.dropout,
-                # recurrent_dropout=0.5,
-                # recurrent_regularizer=l2(0.01),
-                # kernel_regularizer=l2(0.01),
             ),
             merge_mode="ave",
         )(x)
@@ -181,7 +178,7 @@ class TrainModel:
             logits=y_prediction,
             label_length=label_length,
             logit_length=input_length,
-            blank_index=-1,
+            blank_index=1,
         )
 
         return tf.math.reduce_mean(loss)
