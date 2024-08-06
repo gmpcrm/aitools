@@ -150,7 +150,7 @@ class TrainModel:
 
         x = tf.keras.layers.BatchNormalization()(x)
         output = tf.keras.layers.Dense(
-            len(self.vocab) + 1,
+            len(self.vocab) + 2,
             activation=tf.keras.layers.LeakyReLU(alpha=0.3),
             kernel_initializer="lecun_normal",
             # kernel_regularizer=tf.keras.regularizers.l2(0.01),
