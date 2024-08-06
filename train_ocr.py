@@ -282,7 +282,9 @@ class Imgs_recognized(tf.keras.metrics.Metric):
         st = tf.SparseTensor(
             y_pred_decode_st.indices, y_pred_decode_st.values, (batch_len, input_len)
         )
-        y_pred_decode = tf.sparse.to_dense(sp_input=st, default_value=tf.int64(0))
+        y_pred_decode = tf.sparse.to_dense(
+            sp_input=st, default_value=tf.constant(0, dtype=tf.int64)
+        )
 
         res_in_batch_bool = tf.logical_not(
             tf.equal(y_true, y_pred_decode[:, :9])
@@ -329,7 +331,9 @@ class Symbols_recognized(tf.keras.metrics.Metric):
         st = tf.SparseTensor(
             y_pred_decode_st.indices, y_pred_decode_st.values, (batch_len, input_len)
         )
-        y_pred_decode = tf.sparse.to_dense(sp_input=st, default_value=tf.int64(0))
+        y_pred_decode = tf.sparse.to_dense(
+            sp_input=st, default_value=tf.constant(0, dtype=tf.int64)
+        )
 
         res_in_batch_bool = tf.logical_not(
             tf.equal(y_true, y_pred_decode[:, :9])
