@@ -277,7 +277,7 @@ class Imgs_recognized(tf.keras.metrics.Metric):
             inputs=tf.transpose(y_pred, perm=[1, 0, 2]),
             sequence_length=seq_length,
             merge_repeated=True,
-            blank_index=-1,
+            blank_index=1,
         )[0][0]
         st = tf.SparseTensor(
             y_pred_decode_st.indices, y_pred_decode_st.values, (batch_len, input_len)
@@ -326,7 +326,7 @@ class Symbols_recognized(tf.keras.metrics.Metric):
             inputs=tf.transpose(y_pred, perm=[1, 0, 2]),
             sequence_length=seq_length,
             merge_repeated=True,
-            blank_index=-1,
+            blank_index=1,
         )[0][0]
         st = tf.SparseTensor(
             y_pred_decode_st.indices, y_pred_decode_st.values, (batch_len, input_len)
