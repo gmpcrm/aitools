@@ -49,7 +49,7 @@ class DataLoader(tf.keras.utils.Sequence):
             if len(label) < self.max_text_size:
                 label += "-" * (self.max_text_size - len(label))
             if self.work_mode == "train":
-                label = [self.vocab.index(char) + 1 for char in label]
+                label = [self.vocab.index(char) for char in label]
             self.dataset.append({"path_img": img_path, "label": label})
 
     def init_dataset(self):

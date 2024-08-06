@@ -178,7 +178,7 @@ class TrainModel:
             logits=y_prediction,
             label_length=label_length,
             logit_length=input_length,
-            blank_index=1,
+            blank_index=0,
         )
 
         return tf.math.reduce_mean(loss)
@@ -276,8 +276,8 @@ class Imgs_recognized(tf.keras.metrics.Metric):
         y_pred_decode_st = tf.nn.ctc_greedy_decoder(
             inputs=tf.transpose(y_pred, perm=[1, 0, 2]),
             sequence_length=seq_length,
-            merge_repeated=False,
-            blank_index=1,
+            merge_repeated=True,
+            blank_index=0,
         )[0][0]
         st = tf.SparseTensor(
             y_pred_decode_st.indices, y_pred_decode_st.values, (batch_len, input_len)
@@ -325,8 +325,8 @@ class Symbols_recognized(tf.keras.metrics.Metric):
         y_pred_decode_st = tf.nn.ctc_greedy_decoder(
             inputs=tf.transpose(y_pred, perm=[1, 0, 2]),
             sequence_length=seq_length,
-            merge_repeated=False,
-            blank_index=1,
+            merge_repeated=True,
+            blank_index=0,
         )[0][0]
         st = tf.SparseTensor(
             y_pred_decode_st.indices, y_pred_decode_st.values, (batch_len, input_len)
