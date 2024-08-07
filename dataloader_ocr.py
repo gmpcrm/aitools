@@ -86,7 +86,7 @@ class DataLoader(tf.keras.utils.Sequence):
                     always_apply=False,
                     p=0.6,
                 ),
-                A.Rotate(limit=(-0.7, 0.7)),
+                A.Rotate(limit=(-1, 1)),
             ],
             p=1,
         )

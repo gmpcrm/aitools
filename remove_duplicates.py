@@ -1,6 +1,5 @@
 import os
 import shutil
-import fastdup
 import argparse
 from pathlib import Path
 
@@ -24,7 +23,10 @@ class Config:
 
 
 class DuplicateRemover:
+
     def __init__(self, config):
+        import fastdup
+
         self.config = config
         self.fd = fastdup.create(
             work_dir=self.config.fastdup_work_dir, input_dir=self.config.source_folder

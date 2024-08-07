@@ -11,7 +11,30 @@ chars = {
     ",": ".",
     "*": ".",
     "/": "7",
+    "Z": "7",
+    "Л": "л",
+    "б": "6",
+    "n": "л",
+    "$": "S",
+    "!": "I",
+    "А": "A",
+    "Е": "E",
+    "К": "K",
+    "З": "S",
+    "]": "I",
+    "|": "I",
+    "(": "С",
+    "F": "Г",
+    "[": "I",
+    "ж": "л",
+    "K": "K",
+    "m": "N",
+    "l": "I",
+    "И": "N",
+    "о": "О",
 }
+
+invalid_vocab = []
 
 
 def move_invalid_json_files(source_folder, invalid_json_folder):
@@ -32,9 +55,7 @@ def move_invalid_json_files(source_folder, invalid_json_folder):
             # Проверяем наличие хотя бы одного соответствующего PNG-файла
             pattern = re.compile(re.escape(base_name) + r"\.\d{3}\.png")
             if not any(pattern.match(png_file) for png_file in png_files):
-                print(
-                    f"Перемещение файла {json_file} в папку {invalid_json_folder} из-за отсутствия соответствующих PNG-файлов."
-                )
+                # print(f"Перемещение файла {json_file} в папку {invalid_json_folder} из-за отсутствия соответствующих PNG-файлов.")
                 shutil.move(
                     os.path.join(source_folder, json_file),
                     os.path.join(invalid_json_folder, json_file),
@@ -87,6 +108,10 @@ def move_invalid_png_files(source_folder, invalid_png_folder, max_length=13):
                             shutil.move(
                                 png_path, os.path.join(invalid_png_folder, png_file)
                             )
+
+                            for c in missing_chars:
+                                if c not in invalid_vocab:
+                                    invalid_vocab.append(c)
 
                 except json.JSONDecodeError:
                     print(f"Ошибка декодирования JSON в файле: {json_file}")
@@ -364,6 +389,17 @@ label4replace = {
     "PPOPLEX": "PROPLEX",
     "[": "L",
 }
+synht3replace = {
+    "ТA3": "TAS",
+    "ТA3I": "TASI",
+    "ВEВТ": "BERT",
+    "ВТA": "RTA",
+    "ВEВТ": "BERT",
+    "ВEВТAS": "BERTAS",
+    "TOC": "ГОС",
+    "ВEВТAS": "BERTAS",
+    "ВEВТA": "BERTA",
+}
 
 replace = {
     "label": labelreplace,
@@ -371,9 +407,12 @@ replace = {
     "label2": label2replace,
     "label3": label3replace,
     "label4": label4replace,
+    "synth3": synht3replace,
 }
 
-for base in ["synth", "label", "label1", "label2", "label3", "label4"]:
+# for base in ["synth", "label", "label1", "label2", "label3", "label4"]:
+# for base in ["synth2", "synth3"]:
+for base in ["synth3"]:
     source_folder = f"c:/proplex/{base}/ocr"
 
     # Перемещаем невалидные JSON и PNG-файлы
@@ -394,3 +433,6 @@ for base in ["synth", "label", "label1", "label2", "label3", "label4"]:
         df, replaced = extract_text_statistics(source_folder, replace)
         print(df.to_string(index=False))
         print(replaced)
+
+if invalid_vocab:
+    print("Invalid vocab:", invalid_vocab)

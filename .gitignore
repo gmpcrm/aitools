@@ -30,3 +30,5 @@ train_image.png
 preprocess_image.png
 augment_image.png
 source_image.png
+val_unique_texts.csv
+train_unique_texts.csv

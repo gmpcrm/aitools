@@ -41,6 +41,10 @@ class JSONProcessor:
         return path.replace("\\", "/")
 
     def preprocess_image(self, image, target_size=(200, 50), threshold=170):
+
+        if target_size == image.shape[:2]:
+            return image
+
         # Преобразовать в градации серого
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
@@ -111,9 +115,10 @@ class JSONProcessor:
         if not os.path.exists(self.config.target_folder):
             os.makedirs(self.config.target_folder)
 
+        index = 0
         for entry in tqdm(data, desc="Копирование файлов"):
             source_file_path = entry["file"]
-            filename = os.path.basename(source_file_path)
+            filename = f"{index:06d}.png"
             target_file_path = os.path.join(self.config.target_folder, filename)
             target_file_path = self.normalize_path(target_file_path)
 
@@ -125,6 +130,7 @@ class JSONProcessor:
                 shutil.copy(source_file_path, target_file_path)
 
             entry["file"] = target_file_path
+            index += 1
 
         return data
 
@@ -158,15 +164,18 @@ def main():
     config = Config()
     base = "c:/proplex"
     config.source_files = [
-        f"{base}/synth/ocr.json",
-        f"{base}/label/ocr.json",
-        f"{base}/label1/ocr.json",
-        f"{base}/label2/ocr.json",
-        f"{base}/label3/ocr.json",
-        f"{base}/label4/ocr.json",
+        # f"{base}/synth/ocr.json",
+        # f"{base}/label/ocr.json",
+        # f"{base}/label1/ocr.json",
+        # f"{base}/label2/ocr.json",
+        # f"{base}/label3/ocr.json",
+        # f"{base}/label4/ocr.json",
+        "/content/ocr.json",
+        "/proplex/synth2/ocr.json",
+        "/proplex/synth3/ocr.json",
     ]
-    config.target_folder = f"/content/ocr"
-    config.target_json = f"/content/ocr.json"
+    config.target_folder = f"/content011/ocr"
+    config.target_json = f"/content011/ocr.json"
     config.shuffle = True
     config.preprocess = True
     config.mean_color = True

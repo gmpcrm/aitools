@@ -27,6 +27,7 @@ class Config:
         end_date=None,
         text_color_offset=(0, 0, 0),
         background_color_offset=(0, 0, 0),
+        text_strings=[],
     ):
         self.target_folder = target_folder
         self.fonts = fonts
@@ -44,6 +45,7 @@ class Config:
         self.end_date = end_date
         self.text_color_offset = text_color_offset
         self.background_color_offset = background_color_offset
+        self.text_strings = text_strings
 
 
 class TimeImageGenerator:
@@ -153,6 +155,31 @@ class TimeImageGenerator:
                     indent=4,
                 )
 
+    def generate_custom_text_images(self):
+        with tqdm(
+            total=len(self.config.text_strings) * 2,
+            desc="Generating custom text images",
+        ) as pbar:
+            index = 0
+            for _ in range(self.config.count):
+                for text in self.config.text_strings:
+                    words = text.split()
+                    for word in words:
+                        for i in range(1, len(word) + 1):
+                            partial_text = word[:i]
+                            image, angle = self.generate_image(partial_text)
+                            file_name = f"word1_{index:06d}.png"
+                            index += 1
+                            self.save_image(image, file_name, partial_text, angle)
+                            pbar.update(1)
+                        for i in range(len(word), 0, -1):
+                            partial_text = word[:i]
+                            image, angle = self.generate_image(partial_text)
+                            file_name = f"word2_{index:06d}.png"
+                            index += 1
+                            self.save_image(image, file_name, partial_text, angle)
+                            pbar.update(1)
+
 
 def run(**kwargs):
     return run_config(Config(**kwargs))
@@ -160,22 +187,24 @@ def run(**kwargs):
 
 def run_config(config):
     generator = TimeImageGenerator(config)
-    generator.generate_time_images()
+    # generator.generate_time_images()
     if config.start_date and config.end_date:
         generator.generate_date_images()
+    if config.text_strings:
+        generator.generate_custom_text_images()
     return generator
 
 
 def main():
     config = Config()
-    config.target_folder = "/content/synth/ocr"
+    config.target_folder = "/content/synth2/ocr"
     config.fonts = [
         "/content/fonts/Fira Sans Regular.ttf",
         "/content/fonts/Fira Sans Light.ttf",
         "/content/fonts/Fira Sans Thin.ttf",
         "/content/fonts/Fira Sans Condensed Thin.ttf",
     ]
-    config.json_file = "/content/synth/ocr.json"
+    config.json_file = "/content/synth2/ocr.json"
     config.height = 300
     config.width = 400
     config.text_size = 40
@@ -184,11 +213,22 @@ def main():
     config.angle = 0.7
     config.x_offset = 100
     config.y_offset = 100
-    config.count = 5
-    config.start_date = "01.01.2024"
-    config.end_date = "31.12.2030"
+    config.count = 10
+    # config.start_date = "01.01.2024"
+    # config.end_date = "31.12.2030"
     config.text_color_offset = (5, 5, 5)
     config.background_color_offset = (5, 5, 5)
+    config.text_strings = [
+        "ПВХ PROPLEX L 1063 N ГОСТ 30673 18 072024 10 59 7л2",
+        "ПВХ PROPLEX L 1.063 N ГОСТ 30673 24-07-24 16:39 2л1",
+        "BERTASILVERECO BN_1 070 5 ГОСТ 30673 24.07.24 16:43 л16 1",
+        "BERTASILV ERTASILVE RTASILVER TASILVERE ASILVEREC SILVERECO",
+        "BERTASIL ERTASILV RTASILVE TASILVER ASILVERE SILVEREC ILVERECO",
+        "BERTASI ERTASIL RTASILV TASILVE ASILVER SILVERE ILVEREC LVERECO",
+        "BERTAS ERTASI RTASIL TASILV ASILVE SILVER ILVERE LVEREC VERECO",
+        "BERTA ERTAS RTASI TASIL ASILV SILVE ILVER LVERE VEREC ERECO BERT",
+        "ERT RTAS TASI ASIL SILV ILVE LVER VERE EREC RECO",
+    ]
 
     parser = argparse.ArgumentParser(
         description="Утилита для создания синтетических текстовых данных для OCR"
@@ -290,6 +330,12 @@ def main():
         nargs=3,
         default=config.background_color_offset,
         help="Смещение цвета фона (r, g, b)",
+    )
+    parser.add_argument(
+        "--text_strings",
+        nargs="+",
+        default=config.text_strings,
+        help="Список текстовых строк для генерации изображений",
     )
 
     args = parser.parse_args()
