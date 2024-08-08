@@ -46,6 +46,10 @@ class DataLoader(tf.keras.utils.Sequence):
         for entry in all_data:
             img_path = entry["file"]
             label = entry["text"]
+            if len(label) > self.max_text_size:
+                print(f"Text too long: {label} ({len(label)})")
+                continue
+
             if len(label) < self.max_text_size:
                 label += "*" * (self.max_text_size - len(label))
             if self.work_mode == "train":
