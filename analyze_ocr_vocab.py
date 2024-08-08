@@ -131,8 +131,9 @@ def main():
         # f"{base}/label2/ocr.json",
         # f"{base}/label3/ocr.json",
         # f"{base}/label4/ocr.json",
-        "/content/fixed/ocr.json",
-        "/content/fixed/ocr012.json",
+        "/content/ocr.json",
+        "/cluster/ocr.json",
+        "/content/synth2/ocr.json",
     ]
 
     config.source_files = source_files
