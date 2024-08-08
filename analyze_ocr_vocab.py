@@ -21,7 +21,7 @@ class OCRVocabulary:
         self.missing_chars = self.get_missing_chars()
         self.full_vocab = self.real_vocab + self.missing_chars
         self.max_text_length = self.get_max_text_length()
-        self.min_max_dimensions = self.get_min_max_dimensions()
+        # self.min_max_dimensions = self.get_min_max_dimensions()
 
     def load_data(self):
         all_data = []
@@ -101,15 +101,15 @@ def run_config(config):
     missing_chars = ocr_vocab.get_missing_chars()
     full_vocab = ocr_vocab.get_full_vocab()
     max_text_length = ocr_vocab.get_max_text_length()
-    min_height, max_height, min_width, max_width = ocr_vocab.get_min_max_dimensions()
+    # min_height, max_height, min_width, max_width = ocr_vocab.get_min_max_dimensions()
 
     print(letter_counts_df)
     print("Реальный словарь:", real_vocab)
     print("Отсутствующие символы:", missing_chars)
     print("Полный словарь:", full_vocab)
     print("Максимальная длина текста:", max_text_length)
-    print(f"Минимальная высота: {min_height}, Максимальная высота: {max_height}")
-    print(f"Минимальная ширина: {min_width}, Максимальная ширина: {max_width}")
+    # print(f"Минимальная высота: {min_height}, Максимальная высота: {max_height}")
+    # print(f"Минимальная ширина: {min_width}, Максимальная ширина: {max_width}")
 
     if config.max_length is not None:
         unique_long_texts, count = ocr_vocab.get_texts_longer_than(config.max_length)
@@ -125,16 +125,18 @@ def main():
     config = Config()
     base = "c:/proplex"
     source_files = [
-        f"{base}/synth/ocr.json",
-        f"{base}/label/ocr.json",
-        f"{base}/label1/ocr.json",
-        f"{base}/label2/ocr.json",
-        f"{base}/label3/ocr.json",
-        f"{base}/label4/ocr.json",
+        # f"{base}/synth/ocr.json",
+        # f"{base}/label/ocr.json",
+        # f"{base}/label1/ocr.json",
+        # f"{base}/label2/ocr.json",
+        # f"{base}/label3/ocr.json",
+        # f"{base}/label4/ocr.json",
+        "/content/fixed/ocr.json",
+        "/content/fixed/ocr012.json",
     ]
 
     config.source_files = source_files
-    config.max_length = 10
+    config.max_length = 12
 
     parser = argparse.ArgumentParser(description="Анализ OCR словаря")
 
