@@ -14,7 +14,7 @@ class DataLoader(tf.keras.utils.Sequence):
         source_files,
         im_size=[200, 50, 3],
         batch_size=64,
-        max_text_size=9,
+        max_text_size=12,
         split=80,
         shuffle=True,
         augmentation=False,
@@ -47,7 +47,7 @@ class DataLoader(tf.keras.utils.Sequence):
             img_path = entry["file"]
             label = entry["text"]
             if len(label) < self.max_text_size:
-                label += "-" * (self.max_text_size - len(label))
+                label += "*" * (self.max_text_size - len(label))
             if self.work_mode == "train":
                 label = [self.vocab.index(char) for char in label]
             self.dataset.append({"path_img": img_path, "label": label})
@@ -86,7 +86,7 @@ class DataLoader(tf.keras.utils.Sequence):
                     always_apply=False,
                     p=0.6,
                 ),
-                A.Rotate(limit=(-1, 1)),
+                A.Rotate(limit=(-0.7, 0.7)),
             ],
             p=1,
         )

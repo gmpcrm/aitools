@@ -16,7 +16,7 @@ class Config:
         self,
         source_files,
         log_dir="logs",
-        vocabulary="-012.LN436785ВПХPл9-СГОТEO:RXB_ CTASIVР",
+        vocabulary="*012.LN436785ВПХPл9-СГОТEO:RXB_ CTASIVР",
         cosine_decay=True,
         cosine_decay_power=0,
         cosine_decay_warmup_target=1e-4,
@@ -32,7 +32,7 @@ class Config:
         save_best_only_check_point=True,
         epochs=300,
         batch_size=128,
-        max_text_size=9,
+        max_text_size=12,
         device="0",
         shape="200,50,3",
         dropout=0.5,
@@ -302,7 +302,7 @@ class Imgs_recognized(tf.keras.metrics.Metric):
         )
 
         res_in_batch_bool = tf.logical_not(
-            tf.equal(y_true, y_pred_decode[:, :9])
+            tf.equal(y_true, y_pred_decode[:, :12])
         )  # Здесь True это правильно распознанные символы
         res_in_batch_num = tf.cast(
             res_in_batch_bool, tf.int32
@@ -351,7 +351,7 @@ class Symbols_recognized(tf.keras.metrics.Metric):
         )
 
         res_in_batch_bool = tf.logical_not(
-            tf.equal(y_true, y_pred_decode[:, :9])
+            tf.equal(y_true, y_pred_decode[:, :12])
         )  # True - правильно распознанные символы
         res_in_batch_num = tf.cast(
             res_in_batch_bool, tf.int32

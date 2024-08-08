@@ -116,8 +116,12 @@ class JSONProcessor:
             os.makedirs(self.config.target_folder)
 
         index = 0
+        result = []
         for entry in tqdm(data, desc="Копирование файлов"):
             source_file_path = entry["file"]
+            if not os.path.exists(source_file_path):
+                continue
+
             filename = f"{index:06d}.png"
             target_file_path = os.path.join(self.config.target_folder, filename)
             target_file_path = self.normalize_path(target_file_path)
@@ -129,10 +133,14 @@ class JSONProcessor:
             else:
                 shutil.copy(source_file_path, target_file_path)
 
-            entry["file"] = target_file_path
+            new_entry = {
+                "file": target_file_path,
+                "text": entry["text"],
+            }
+            result.append(new_entry)
             index += 1
 
-        return data
+        return result
 
     def save_json(self, data):
         with open(self.config.target_json, "w", encoding="utf-8") as file:
@@ -141,10 +149,10 @@ class JSONProcessor:
     def process(self):
         data = self.read_json_files()
 
-        if self.config.shuffle:
-            random.shuffle(data)
-
         updated_data = self.copy_files_and_update_paths(data)
+        if self.config.shuffle:
+            random.shuffle(updated_data)
+
         self.save_json(updated_data)
 
 
@@ -170,14 +178,14 @@ def main():
         # f"{base}/label2/ocr.json",
         # f"{base}/label3/ocr.json",
         # f"{base}/label4/ocr.json",
-        "/content/ocr.json",
-        "/proplex/synth2/ocr.json",
-        "/proplex/synth3/ocr.json",
+        # "/content/ocr.json",
+        "/cluster/ocr.json",
+        "/content/synth2/ocr.json",
     ]
-    config.target_folder = f"/content011/ocr"
-    config.target_json = f"/content011/ocr.json"
+    config.target_folder = f"/content/ocr012"
+    config.target_json = f"/content/ocr012.json"
     config.shuffle = True
-    config.preprocess = True
+    config.preprocess = False
     config.mean_color = True
 
     parser = argparse.ArgumentParser(

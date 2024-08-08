@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 
 
 class Config:
+
     def __init__(
         self,
         target_folder="output",
@@ -23,11 +24,13 @@ class Config:
         x_offset=0,
         y_offset=0,
         count=1,
+        vocabulary_count=1000,
         start_date=None,
         end_date=None,
         text_color_offset=(0, 0, 0),
         background_color_offset=(0, 0, 0),
         text_strings=[],
+        vocabulary=None,
     ):
         self.target_folder = target_folder
         self.fonts = fonts
@@ -46,6 +49,8 @@ class Config:
         self.text_color_offset = text_color_offset
         self.background_color_offset = background_color_offset
         self.text_strings = text_strings
+        self.vocabulary = vocabulary
+        self.vocabulary_count = vocabulary_count
 
 
 class TimeImageGenerator:
@@ -64,6 +69,9 @@ class TimeImageGenerator:
             max(0, min(255, base + off)) for base, off in zip(base_rgb, offset_rgb)
         )
         return new_rgb
+
+    def generate_word_from_vocabulary(self, length):
+        return "".join(random.choice(self.config.vocabulary) for _ in range(length))
 
     def generate_image(self, text):
         background_color_rgb = self.random_color(
@@ -113,23 +121,24 @@ class TimeImageGenerator:
         file_path = os.path.normpath(file_path)
         image.save(file_path)
 
-        if self.config.json_file:
-            ocr_entry = {"file": file_path, "text": text}
-            if self.config.angle != 0:
-                ocr_entry["angle"] = angle
-            self.ocr_data.append(ocr_entry)
+        ocr_entry = {"file": file_path, "text": text}
+        if self.config.angle != 0:
+            ocr_entry["angle"] = angle
+        self.ocr_data.append(ocr_entry)
 
     def generate_time_images(self):
         total_iterations = self.config.count * 24 * 60
         with tqdm(total=total_iterations, desc="Generating time images") as pbar:
+            index = 0
             for _ in range(self.config.count):
                 for hour in range(24):
                     for minute in range(60):
                         time_str = f"{hour:02}:{minute:02}"
                         image, angle = self.generate_image(time_str)
-                        file_name = f"time_{hour:02}_{minute:02}_{_}.png"
+                        file_name = f"time_{index:06d}.png"
                         self.save_image(image, file_name, time_str, angle)
                         pbar.update(1)
+                        index += 1
 
     def generate_date_images(self):
         start_date = datetime.strptime(self.config.start_date, "%d.%m.%Y")
@@ -137,23 +146,22 @@ class TimeImageGenerator:
         total_days = (end_date - start_date).days + 1
 
         with tqdm(total=total_days * 2, desc="Generating date images") as pbar:
+            index = 0
             for single_date in (start_date + timedelta(n) for n in range(total_days)):
-                for date_format in ["%d.%m.%Y", "%d%m%Y"]:
+                for date_format in [
+                    "%d.%m.%Y",
+                    "%d %m.%Y",
+                    "%d%m%Y",
+                    "%d %m%Y",
+                    "%d %m %Y",
+                    "%d-%m-%Y",
+                ]:
                     date_str = single_date.strftime(date_format)
                     image, angle = self.generate_image(date_str)
-                    file_name = f"date_{date_str}.png"
+                    file_name = f"date_{index:06d}.png"
                     self.save_image(image, file_name, date_str, angle)
                     pbar.update(1)
-
-        if self.config.json_file:
-            with open(self.config.json_file, "w", encoding="utf-8") as json_file:
-                np.random.shuffle(self.ocr_data)
-                json.dump(
-                    {"ocr_files": self.ocr_data},
-                    json_file,
-                    ensure_ascii=False,
-                    indent=4,
-                )
+                    index += 1
 
     def generate_custom_text_images(self):
         with tqdm(
@@ -168,17 +176,43 @@ class TimeImageGenerator:
                         for i in range(1, len(word) + 1):
                             partial_text = word[:i]
                             image, angle = self.generate_image(partial_text)
-                            file_name = f"word1_{index:06d}.png"
+                            file_name = f"word_{index:06d}.png"
                             index += 1
                             self.save_image(image, file_name, partial_text, angle)
                             pbar.update(1)
                         for i in range(len(word), 0, -1):
                             partial_text = word[:i]
                             image, angle = self.generate_image(partial_text)
-                            file_name = f"word2_{index:06d}.png"
+                            file_name = f"word_{index:06d}.png"
                             index += 1
                             self.save_image(image, file_name, partial_text, angle)
                             pbar.update(1)
+
+    def generate_vocabulary_images(self):
+        with tqdm(
+            total=self.config.count * self.config.vocabulary_count,
+            desc="Generating vocabulary images",
+        ) as pbar:
+            index = 0
+            for _ in range(self.config.count):
+                for i in range(self.config.vocabulary_count):
+                    word_length = random.randint(1, 9)
+                    word = self.generate_word_from_vocabulary(word_length)
+                    image, angle = self.generate_image(word)
+                    file_name = f"vocab_{index:06d}.png"
+                    self.save_image(image, file_name, word, angle)
+                    pbar.update(1)
+                    index += 1
+
+    def save_ocr_data(self):
+        if self.config.json_file:
+            with open(self.config.json_file, "w", encoding="utf-8") as json_file:
+                json.dump(
+                    {"ocr_files": self.ocr_data},
+                    json_file,
+                    ensure_ascii=False,
+                    indent=4,
+                )
 
 
 def run(**kwargs):
@@ -187,11 +221,14 @@ def run(**kwargs):
 
 def run_config(config):
     generator = TimeImageGenerator(config)
-    # generator.generate_time_images()
     if config.start_date and config.end_date:
+        generator.generate_time_images()
         generator.generate_date_images()
     if config.text_strings:
         generator.generate_custom_text_images()
+    if config.vocabulary:
+        generator.generate_vocabulary_images()
+    generator.save_ocr_data()
     return generator
 
 
@@ -205,17 +242,17 @@ def main():
         "/content/fonts/Fira Sans Condensed Thin.ttf",
     ]
     config.json_file = "/content/synth2/ocr.json"
-    config.height = 300
-    config.width = 400
+    config.height = 50
+    config.width = 200
     config.text_size = 40
     config.background_color = "rgb(181, 181, 181)"
     config.text_color = "rgb(139, 139, 139)"
-    config.angle = 0.7
-    config.x_offset = 100
-    config.y_offset = 100
+    config.angle = 1
+    config.start_date = "01.01.2020"
+    config.end_date = "31.12.2030"
+    config.x_offset = 0
+    config.y_offset = 0
     config.count = 10
-    # config.start_date = "01.01.2024"
-    # config.end_date = "31.12.2030"
     config.text_color_offset = (5, 5, 5)
     config.background_color_offset = (5, 5, 5)
     config.text_strings = [
@@ -223,12 +260,15 @@ def main():
         "ПВХ PROPLEX L 1.063 N ГОСТ 30673 24-07-24 16:39 2л1",
         "BERTASILVERECO BN_1 070 5 ГОСТ 30673 24.07.24 16:43 л16 1",
         "BERTASILV ERTASILVE RTASILVER TASILVERE ASILVEREC SILVERECO",
-        "BERTASIL ERTASILV RTASILVE TASILVER ASILVERE SILVEREC ILVERECO",
-        "BERTASI ERTASIL RTASILV TASILVE ASILVER SILVERE ILVEREC LVERECO",
-        "BERTAS ERTASI RTASIL TASILV ASILVE SILVER ILVERE LVEREC VERECO",
-        "BERTA ERTAS RTASI TASIL ASILV SILVE ILVER LVERE VEREC ERECO BERT",
+        "BERTASIL ERTASILV RTASILVE TASILVER ASILВЕРЕ SILVEREC ILVERECO",
+        "BERTASI ERTASIL RTASILV TASILVE ASILВЕР SILVERE ILVEREC LVERECO",
+        "BERTAS ERTASI RTASIL TASILV ASILВЕ SILVERE ILVERE LVEREC VERECO",
+        "BERTA ERTAS RTASI TASIL ASILВЕ SILVE ILVER LVERE VEREC ERECO BERT",
         "ERT RTAS TASI ASIL SILV ILVE LVER VERE EREC RECO",
     ]
+
+    config.vocabulary = "012.LN436785ВПХPл9-СГОТEO:RXB_CTASIVР"
+    config.vocabulary_count = 20000
 
     parser = argparse.ArgumentParser(
         description="Утилита для создания синтетических текстовых данных для OCR"
@@ -336,6 +376,12 @@ def main():
         nargs="+",
         default=config.text_strings,
         help="Список текстовых строк для генерации изображений",
+    )
+    parser.add_argument(
+        "--vocabulary",
+        type=str,
+        default=config.vocabulary,
+        help="Словарь символов для генерации случайных слов",
     )
 
     args = parser.parse_args()
