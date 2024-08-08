@@ -14,7 +14,7 @@ class DataLoader(tf.keras.utils.Sequence):
         source_files,
         im_size=[200, 50, 3],
         batch_size=64,
-        max_text_size=12,
+        max_text_size=9,
         split=80,
         shuffle=True,
         augmentation=False,
