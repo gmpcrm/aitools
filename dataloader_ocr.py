@@ -49,6 +49,13 @@ class DataLoader(tf.keras.utils.Sequence):
             if len(label) < self.max_text_size:
                 label += "*" * (self.max_text_size - len(label))
             if self.work_mode == "train":
+                missing_chars = [c for c in label if c not in self.vocab]
+                if missing_chars:
+                    print(f"Missing chars: {missing_chars}")
+                    print(f"Vocabulary: {self.vocab}")
+                    print(f"Label: {label}")
+                    print(f"Image: {img_path}")
+
                 label = [self.vocab.index(char) for char in label]
             self.dataset.append({"path_img": img_path, "label": label})
 
