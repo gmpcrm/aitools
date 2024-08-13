@@ -57,8 +57,7 @@ def main():
     config = Config()
     config.source_files = [
         "/content/ocr.json",
-        "/cluster/ocr.json",
-        "/content/synth2/ocr.json",
+        # "/cluster/ocr.json",
     ]
     config.source_vocabulary = "АВЕКМНОРСТУХаекорсух"
     config.target_vocabulary = "ABEKMHOPCTYXaekopcyx"

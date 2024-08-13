@@ -50,8 +50,12 @@ class DistanceCalculator:
             pickle.dump(distances, f)
 
     def load_distances(self):
+        if not os.path.exists(self.config.target_file):
+            return None
+
         with gzip.open(self.config.target_file, "rb") as f:
             distances = pickle.load(f)
+
         return distances
 
     def remove_duplicates(self, embeddings, distances):
@@ -92,10 +96,11 @@ class DistanceCalculator:
     def process(self):
         embeddings = self.load_embeddings()
         print(f"Всего файлов в эмбеддингах: {len(embeddings)}")
-        distances = self.calculate_distances(embeddings)
-        self.save_distances(distances)
-        print(f"Расстояния сохранены в {self.config.target_file}")
         distances = self.load_distances()
+        if distances is None:
+            distances = self.calculate_distances(embeddings)
+            self.save_distances(distances)
+            print(f"Расстояния сохранены в {self.config.target_file}")
         self.remove_duplicates(embeddings, distances)
         if self.config.statistics_file:
             self.save_statistics(embeddings, distances)

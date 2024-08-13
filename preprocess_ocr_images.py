@@ -1,5 +1,4 @@
 import os
-import json
 import shutil
 import random
 import argparse
@@ -12,9 +11,8 @@ from tqdm import tqdm
 class Config:
     def __init__(
         self,
-        source_files=[],
-        target_folder="/content/ocr",
-        target_json="/content/ocr.json",
+        source_folder="",
+        target_folder="",
         shuffle=False,
         preprocess=True,
         mean_color=True,
@@ -24,10 +22,12 @@ class Config:
         binary_threshold=True,
         remove_noise=True,
         remove_borders=True,
+        thin_font=False,
+        thick_font=False,
+        deskew=False,
     ):
-        self.source_files = source_files
+        self.source_folder = source_folder
         self.target_folder = target_folder
-        self.target_json = target_json
         self.shuffle = shuffle
         self.preprocess = preprocess
         self.mean_color = mean_color
@@ -37,71 +37,68 @@ class Config:
         self.binary_threshold = binary_threshold
         self.remove_noise = remove_noise
         self.remove_borders = remove_borders
+        self.thin_font = thin_font
+        self.thick_font = thick_font
+        self.deskew = deskew
 
 
 class ImageProcessor:
     def __init__(self, config):
         self.config = config
-        self.result_data = []
-
-    def normalize_path(self, path):
-        return path.replace("\\", "/")
 
     def process_images(self):
+        source_folder = Path(self.config.source_folder).expanduser()
         target_folder = Path(self.config.target_folder).expanduser()
 
         if not target_folder.exists():
             target_folder.mkdir(parents=True, exist_ok=True)
 
-        for file_path in self.config.source_files:
-            json_path = Path(file_path).expanduser()
-
-            with open(json_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
-
-            for files in tqdm(
-                data["ocr_files"], desc=f"Обработка изображений из {file_path}"
-            ):
-                image_file = Path(files["file"])
-                img = cv2.imread(str(image_file))
-
-                if img is None:
-                    print(f"Не удалось загрузить изображение: {image_file}")
-                    continue
-
-                gray_image = self.grayscale(img)
-                if self.config.binary_threshold:
-                    lower_thresh, upper_thresh = self.calculate_dynamic_thresholds(img)
-                    _, im_bw = cv2.threshold(
-                        gray_image, lower_thresh, upper_thresh, cv2.THRESH_BINARY
-                    )
-                else:
-                    im_bw = gray_image
-
-                if self.config.remove_noise:
-                    im_bw = self.noise_removal(im_bw)
-
-                if self.config.remove_borders:
-                    im_bw = self.remove_borders_func(im_bw)
-
-                if self.config.preprocess:
-                    im_bw = self.preprocess_image(im_bw)
-
-                output_file = target_folder / image_file.name
-                rgb_image = cv2.cvtColor(im_bw, cv2.COLOR_GRAY2RGB)
-                cv2.imwrite(str(output_file), rgb_image)
-
-                self.result_data.append(
-                    {
-                        "file": self.normalize_path(str(output_file)),
-                        "text": files["text"],
-                    }
-                )
+        image_files = list(source_folder.glob("*.jpg")) + list(
+            source_folder.glob("*.png")
+        )
 
         if self.config.shuffle:
-            random.shuffle(self.result_data)
+            random.shuffle(image_files)
 
-        self.save_json(self.result_data)
+        for image_file in tqdm(
+            image_files, desc=f"Обработка изображений из {source_folder}"
+        ):
+            img = cv2.imread(str(image_file))
+
+            if img is None:
+                print(f"Не удалось загрузить изображение: {image_file}")
+                continue
+
+            if self.config.deskew:
+                img = self.deskew(img)
+
+            gray_image = self.grayscale(img)
+            if self.config.binary_threshold:
+                lower_thresh, upper_thresh = self.calculate_dynamic_thresholds(img)
+                _, im_bw = cv2.threshold(
+                    gray_image, lower_thresh, upper_thresh, cv2.THRESH_BINARY
+                )
+            else:
+                im_bw = gray_image
+
+            if self.config.remove_noise:
+                im_bw = self.noise_removal(im_bw)
+
+            if self.config.remove_borders:
+                im_bw = self.remove_borders_func(im_bw)
+
+            if self.config.thin_font:
+                im_bw = self.thin_font(im_bw)
+
+            if self.config.thick_font:
+                im_bw = self.thick_font(im_bw)
+
+            if self.config.preprocess:
+                im_bw = self.preprocess_image(im_bw)
+
+            output_file = target_folder / image_file.name
+            rgb_image = cv2.cvtColor(im_bw, cv2.COLOR_GRAY2RGB)
+            cv2.imwrite(str(output_file), rgb_image)
 
     def grayscale(self, image):
         return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -182,15 +179,53 @@ class ImageProcessor:
 
         return new_image
 
-    def save_json(self, data):
-        with open(self.config.target_json, "w", encoding="utf-8") as file:
-            json.dump({"ocr_files": data}, file, ensure_ascii=False, indent=4)
+    def thin_font(self, image):
+        image = cv2.bitwise_not(image)
+        kernel = np.ones((2, 2), np.uint8)
+        image = cv2.erode(image, kernel, iterations=1)
+        image = cv2.bitwise_not(image)
+        return image
+
+    def thick_font(self, image):
+        image = cv2.bitwise_not(image)
+        kernel = np.ones((2, 2), np.uint8)
+        image = cv2.dilate(image, kernel, iterations=1)
+        image = cv2.bitwise_not(image)
+        return image
+
+    def deskew(self, image):
+        angle = self.get_skew_angle(image)
+        return self.rotate_image(image, -1.0 * angle)
+
+    def get_skew_angle(self, cvImage) -> float:
+        newImage = cvImage.copy()
+        gray = cv2.cvtColor(newImage, cv2.COLOR_BGR2GRAY)
+        blur = cv2.GaussianBlur(gray, (9, 9), 0)
+        thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (30, 5))
+        dilate = cv2.dilate(thresh, kernel, iterations=2)
+        contours, _ = cv2.findContours(dilate, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        contours = sorted(contours, key=cv2.contourArea, reverse=True)
+        largestContour = contours[0]
+        minAreaRect = cv2.minAreaRect(largestContour)
+        angle = minAreaRect[-1]
+        if angle < -45:
+            angle = 90 + angle
+        return -1.0 * angle
+
+    def rotate_image(self, cvImage, angle: float):
+        newImage = cvImage.copy()
+        (h, w) = newImage.shape[:2]
+        center = (w // 2, h // 2)
+        M = cv2.getRotationMatrix2D(center, angle, 1.0)
+        newImage = cv2.warpAffine(
+            newImage, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE
+        )
+        return newImage
 
 
 def run(**kwargs):
-    config = Config(**kwargs)
-    processor = ImageProcessor(config)
-    processor.process_images()
+    return run_config(Config(**kwargs))
 
 
 def run_config(config):
@@ -201,38 +236,27 @@ def run_config(config):
 
 def main():
     config = Config()
-
-    base = "c:/proplex"
-    config.source_files = [
-        # f"{base}/synth/ocr.json",
-        # f"{base}/label/ocr.json",
-        # f"{base}/label1/ocr.json",
-        f"{base}/label2/ocr.json",
-        # f"{base}/label3/ocr.json",
-        # f"{base}/label4/ocr.json",
-    ]
-
-    config.target_folder = f"/content/ocr"
-    config.target_json = f"/content/ocr.json"
+    config.source_folder = "/proplex/label1/yolo"
+    config.target_folder = "/proplex/label1/yolo_processed"
+    config.preprocess = False
     config.shuffle = True
+    config.mean_color = True
     config.resize_height = 50
     config.resize_width = 200
     config.padding_color = (181, 181, 181)
-    config.binary_threshold = False
-    config.remove_noise = False
-    config.remove_borders = False
-    config.preprocess = True
-    config.mean_color = False
-
-    parser = argparse.ArgumentParser(
-        description="Утилита для обработки изображений и JSON файлов."
-    )
+    config.binary_threshold = True
+    config.remove_noise = True
+    config.remove_borders = True
+    config.thin_font = False
+    config.thick_font = False
+    config.deskew = True
+    parser = argparse.ArgumentParser(description="Утилита для обработки изображений.")
 
     parser.add_argument(
-        "--source_files",
-        nargs="+",
-        default=config.source_files,
-        help="Список исходных JSON файлов",
+        "--source_folder",
+        default=config.source_folder,
+        type=str,
+        help="Папка с исходными изображениями",
     )
     parser.add_argument(
         "--target_folder",
@@ -241,26 +265,21 @@ def main():
         help="Папка для сохранения обработанных изображений",
     )
     parser.add_argument(
-        "--target_json",
-        default=config.target_json,
-        help="Выходной результирующий JSON файл",
-    )
-    parser.add_argument(
         "--shuffle",
-        action="store_true",
         default=config.shuffle,
-        help="Перемешать результаты",
+        action="store_true",
+        help="Перемешать изображения перед обработкой",
     )
     parser.add_argument(
         "--preprocess",
-        action="store_true",
         default=config.preprocess,
+        action="store_true",
         help="Включить предобработку изображений (изменение размера и выравнивание)",
     )
     parser.add_argument(
         "--mean_color",
-        action="store_true",
         default=config.mean_color,
+        action="store_true",
         help="Использовать средний цвет самых ярких пикселей для заливки фона",
     )
     parser.add_argument(
@@ -284,21 +303,39 @@ def main():
     )
     parser.add_argument(
         "--binary_threshold",
-        action="store_true",
         default=config.binary_threshold,
+        action="store_true",
         help="Применить бинарное пороговое значение к изображениям",
     )
     parser.add_argument(
         "--remove_noise",
-        action="store_true",
         default=config.remove_noise,
+        action="store_true",
         help="Удалить шум с изображений",
     )
     parser.add_argument(
         "--remove_borders",
-        action="store_true",
         default=config.remove_borders,
+        action="store_true",
         help="Удалить границы с изображений",
+    )
+    parser.add_argument(
+        "--thin_font",
+        default=config.thin_font,
+        action="store_true",
+        help="Утоньшение шрифта на изображениях",
+    )
+    parser.add_argument(
+        "--thick_font",
+        default=config.thick_font,
+        action="store_true",
+        help="Утолщение шрифта на изображениях",
+    )
+    parser.add_argument(
+        "--deskew",
+        default=config.deskew,
+        action="store_true",
+        help="Исправление наклона изображения",
     )
 
     args = parser.parse_args()
