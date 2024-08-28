@@ -10,29 +10,40 @@ from PIL import Image, ImageDraw
 from tqdm.asyncio import tqdm
 
 
-async def source_video_stream(video_path, fps=-1.0):
-    cap = cv2.VideoCapture(video_path)
-    video_fps = cap.get(cv2.CAP_PROP_FPS)
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+async def source_video_file_stream(result_stream, folder_path):
+    video_files = list(Path(folder_path).rglob("*.mp4"))
+    for video_file in video_files:
+        result_stream["file"] = str(video_file)
+        yield result_stream
 
-    frame_interval = int(video_fps / fps) if fps > 0 else 1
 
-    frame_count = 0
+async def source_video_stream(result_stream, fps=-1.0):
+    async for results in result_stream:
+        video_path = results["file"]
+        cap = cv2.VideoCapture(video_path)
+        video_fps = cap.get(cv2.CAP_PROP_FPS)
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
 
-    with tqdm(total=total_frames) as pbar:
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
+        frame_interval = int(video_fps / fps) if fps > 0 else 1
 
-            if frame_count % frame_interval == 0:
-                yield (frame, {"file": video_path, "frame_index": frame_count})
-                await asyncio.sleep(0)
+        frame_count = 0
 
-            frame_count += 1
-            pbar.update(1)
+        with tqdm(total=total_frames) as pbar:
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
 
-    cap.release()
+                if frame_count % frame_interval == 0:
+                    results["frame"] = frame
+                    results["frame_index"] = frame_count
+                    yield results
+                    await asyncio.sleep(0)
+
+                frame_count += 1
+                pbar.update(1)
+
+        cap.release()
 
 
 async def detection_yolo_stream(
@@ -45,7 +56,8 @@ async def detection_yolo_stream(
 ):
     model = YOLOv10(model_path).to(torch.device(device))
 
-    async for frame, results in result_stream:
+    async for results in result_stream:
+        frame = results["frame"]
         detections = model(frame, verbose=False)
         yolo_results = []
         for detection in detections[0].boxes:
@@ -74,7 +86,7 @@ async def detection_yolo_stream(
                 )
 
         results["yolo"] = yolo_results
-        yield (frame, results)
+        yield results
         await asyncio.sleep(0)
 
 
@@ -92,7 +104,7 @@ async def detection_florence_stream(
         trust_remote_code=True,
     )
 
-    async for frame, results in result_stream:
+    async for results in result_stream:
         yolo_results = results.get("yolo", [])
 
         florence_results = []
@@ -137,13 +149,13 @@ async def detection_florence_stream(
             )
 
         results["florence"] = florence_results
-        yield (frame, results)
+        yield results
         await asyncio.sleep(0)
 
 
 async def draw_yolo_stream(result_stream):
-    async for frame, results in result_stream:
-        yolo_frame = frame.copy()
+    async for results in result_stream:
+        yolo_frame = results["frame"].copy()
 
         for yolo_result in results.get("yolo", []):
             x1, y1, x2, y2 = yolo_result["bbox"]
@@ -151,7 +163,7 @@ async def draw_yolo_stream(result_stream):
 
         results["yolo_frame"] = yolo_frame
 
-        yield (frame, results)
+        yield results
         await asyncio.sleep(0)
 
 
@@ -212,7 +224,8 @@ async def save_results_stream(stream_results, output_folder, draw_boxes=True):
     output_path.mkdir(parents=True, exist_ok=True)
     idx = 0
 
-    async for frame, results in stream_results:
+    async for results in stream_results:
+        frame = results["frame"]
         save_yolo_results(frame, results, output_path, idx)
         save_florence_results(frame, results, output_path, idx, draw_boxes)
         idx += 1
@@ -231,7 +244,8 @@ async def main():
     florence_prompt = "<CAPTION_TO_PHRASE_GROUNDING>"
     florence_text = "locate gloves on people hands"
 
-    stream = source_video_stream(video_path, fps=3)
+    stream = source_video_file_stream({}, folder_path=base)
+    stream = source_video_stream(stream, fps=1)
     stream = detection_yolo_stream(
         stream,
         model_path=yolo_model,
