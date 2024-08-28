@@ -1,0 +1,1 @@
+python extract_frames.py --source_folder c:/kitchen/clips/cam-1001/2024-05-10 --target_folder c:/kitchen/clips/cam-1001/2024-05-10.images --fps 3

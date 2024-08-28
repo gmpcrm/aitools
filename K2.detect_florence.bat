@@ -1,0 +1,1 @@
+python detect_florence.py --source_folder c:/kitchen/clips/cam-1001/2024-05-10.images --target_folder c:/kitchen/clips/cam-1001/2024-05-10.florence --general_prompt "locate gloves on people hands" --mode "images" --save_boxes --save_yolo --models_path=/projects/models --device cpu
