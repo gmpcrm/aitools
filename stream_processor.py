@@ -10,7 +10,11 @@ from PIL import Image, ImageDraw
 from tqdm.asyncio import tqdm
 
 
-async def source_video_file_stream(result_stream, folder_path):
+async def source_video_file(folder_path):
+    yield {"file": folder_path}
+
+
+async def source_video_files_stream(result_stream, folder_path):
     video_files = list(Path(folder_path).rglob("*.mp4"))
     for video_file in video_files:
         result_stream["file"] = str(video_file)
@@ -220,14 +224,15 @@ def save_florence_results(frame, results, output_path, idx, draw_boxes=True):
 
 
 async def save_results_stream(stream_results, output_folder, draw_boxes=True):
-    output_path = Path(output_folder)
-    output_path.mkdir(parents=True, exist_ok=True)
     idx = 0
-
     async for results in stream_results:
+        file_name = Path(results["file"]).stem
+        target_path = Path(output_folder) / file_name
+        target_path.mkdir(parents=True, exist_ok=True)
+
         frame = results["frame"]
-        save_yolo_results(frame, results, output_path, idx)
-        save_florence_results(frame, results, output_path, idx, draw_boxes)
+        save_yolo_results(frame, results, target_path, idx)
+        save_florence_results(frame, results, target_path, idx, draw_boxes)
         idx += 1
         await asyncio.sleep(0)
 
@@ -237,14 +242,13 @@ async def main():
     yolo_model = f"{models}/yolov10s.pt"
     yolo_classes = [0]
     florence_model = "microsoft/Florence-2-large"
-    base = "c:/kitchen/clips/cam-1001"
-    video_path = f"{base}/2024-05-10/cam-1001-2024-05-10_01-19-26.0.mp4"
-    output_folder = f"{base}/2024-05-10.florence"
+    base = "c:/kitchen/cam-1001/2024-05-10"
+    output_folder = f"{base}.florence"
 
     florence_prompt = "<CAPTION_TO_PHRASE_GROUNDING>"
     florence_text = "locate gloves on people hands"
 
-    stream = source_video_file_stream({}, folder_path=base)
+    stream = source_video_files_stream({}, folder_path=base)
     stream = source_video_stream(stream, fps=1)
     stream = detection_yolo_stream(
         stream,
